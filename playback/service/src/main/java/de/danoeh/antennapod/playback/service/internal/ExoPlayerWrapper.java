@@ -110,19 +110,24 @@ public class ExoPlayerWrapper {
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS);
         loadControl.setBackBuffer((int) TimeUnit.MINUTES.toMillis(5), true);
         trackSelector = new DefaultTrackSelector(context);
-        final int skipSilenceDurationUs;
+        final long skipSilenceDurationUs;
+        final short silenceThreshold;
         switch (skipSilence) {
             case MILD:
-                skipSilenceDurationUs = 300_000;
+                skipSilenceDurationUs = 500_000L; // 0.5s - only skip longer silences
+                silenceThreshold = 1000; // Less sensitive (higher threshold)
                 break;
             case MEDIUM:
-                skipSilenceDurationUs = 250_000;
+                skipSilenceDurationUs = 350_000L; // 0.35s - balanced approach
+                silenceThreshold = 500; // Default sensitivity
                 break;
             case AGGRESSIVE:
-                skipSilenceDurationUs = 150_000;
+                skipSilenceDurationUs = 250_000L; // 0.25s - more conservative than before
+                silenceThreshold = 200; // More sensitive but not too aggressive
                 break;
             default:
-                skipSilenceDurationUs = 0;
+                skipSilenceDurationUs = 0L;
+                silenceThreshold = SilenceSkippingAudioProcessor.DEFAULT_SILENCE_THRESHOLD_LEVEL;
                 break;
         }
         exoPlayer = new ExoPlayer.Builder(context, new DefaultRenderersFactory(context) {
@@ -136,15 +141,12 @@ public class ExoPlayerWrapper {
                 return new DefaultAudioSink.Builder()
                         .setAudioCapabilities(AudioCapabilities.getCapabilities(context))
                         .setAudioProcessorChain(
-                                new DefaultAudioProcessorChain(
-                                        new SilenceSkippingAudioProcessor(
-                                                skipSilenceDurationUs,
-                                                skipSilenceDurationUs,
-                                                SilenceSkippingAudioProcessor.DEFAULT_SILENCE_THRESHOLD_LEVEL
-                                        ),
-                                        new SonicAudioProcessor()
-                                )
-                        )
+                                skipSilenceDurationUs > 0 
+                                    ? new DefaultAudioProcessorChain(new SilenceSkippingAudioProcessor(
+                                        skipSilenceDurationUs,
+                                        Math.min(skipSilenceDurationUs, SilenceSkippingAudioProcessor.DEFAULT_PADDING_SILENCE_US),
+                                        silenceThreshold))
+                                    : new DefaultAudioProcessorChain())
                         .setEnableFloatOutput(enableFloatOutput)
                         .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                         .setOffloadMode(
@@ -226,10 +228,6 @@ public class ExoPlayerWrapper {
     }
 
     public FeedPreferences.SkipSilence getCurrentSkipSilence() {
-        
-        if (!exoPlayer.getSkipSilenceEnabled()) {
-            return FeedPreferences.SkipSilence.OFF;
-        }
         return this.skipSilence;
     }
 
@@ -330,9 +328,13 @@ public class ExoPlayerWrapper {
 
     public void setPlaybackParams(final float speed, final FeedPreferences.SkipSilence skipSilence) {
         playbackParameters = new PlaybackParameters(speed, playbackParameters.pitch);
-        // update skip silence duration in audio pipeline
-        if (skipSilence != FeedPreferences.SkipSilence.OFF && skipSilence != this.skipSilence) {
+        
+        // Only recreate if skipSilence changed and requires different processor configuration
+        if (skipSilence != this.skipSilence) {
             this.skipSilence = skipSilence;
+            
+            // For now, we still need to recreate the player because ExoPlayer's built-in
+            // setSkipSilenceEnabled() doesn't allow configuring custom thresholds
             final boolean wasPlaying = isPlaying();
             final int position = getCurrentPosition();
             exoPlayer.release();
@@ -346,6 +348,7 @@ public class ExoPlayerWrapper {
                 exoPlayer.play();
             }
         }
+        
         exoPlayer.setSkipSilenceEnabled(skipSilence != FeedPreferences.SkipSilence.OFF);
         exoPlayer.setPlaybackParameters(playbackParameters);
     }

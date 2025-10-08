@@ -34,10 +34,10 @@
             <link>https://example.com/skip-silence-test/episode1</link>
             <guid isPermaLink="false">skip-silence-test-episode-1</guid>
             <pubDate>Fri, 09 Aug 2025 12:00:00 GMT</pubDate>
-            <enclosure url="https://example.com/audio/test_skip_silence.mp3" length="84000" type="audio/mpeg"/>
+            <enclosure url="http://192.168.86.244:8001/test_skip_silence.mp3" length="84000" type="audio/mpeg"/>
             <itunes:duration>00:00:05</itunes:duration>
             <itunes:summary>Short test episode with basic silence patterns</itunes:summary>
-            <podcast:transcript url="https://example.com/transcripts/test_skip_silence.vtt" type="application/vtt"/>
+            <podcast:transcript url="http://192.168.86.244:8001/test_skip_silence.json" type="application/json"/>
         </item>
 
         <item>
@@ -46,10 +46,10 @@
             <link>https://example.com/skip-silence-test/episode2</link>
             <guid isPermaLink="false">skip-silence-test-episode-2</guid>
             <pubDate>Fri, 09 Aug 2025 11:00:00 GMT</pubDate>
-            <enclosure url="https://example.com/audio/test_skip_silence_long.mp3" length="13950000" type="audio/mpeg"/>
+            <enclosure url="http://192.168.86.244:8001/test_skip_silence_long.mp3" length="13950000" type="audio/mpeg"/>
             <itunes:duration>00:14:31</itunes:duration>
             <itunes:summary>Long-form test episode with extended audio segments and silence periods</itunes:summary>
-            <podcast:transcript url="https://example.com/transcripts/test_skip_silence_long.vtt" type="application/vtt"/>
+            <podcast:transcript url="http://192.168.86.244:8001/test_skip_silence_long.json" type="application/json"/>
         </item>
 
         <item>
@@ -58,10 +58,34 @@
             <link>https://example.com/skip-silence-test/episode3</link>
             <guid isPermaLink="false">skip-silence-test-episode-3</guid>
             <pubDate>Fri, 09 Aug 2025 10:00:00 GMT</pubDate>
-            <enclosure url="https://example.com/audio/test_skip_silence_random.mp3" length="286000" type="audio/mpeg"/>
+            <enclosure url="http://192.168.86.244:8001/test_skip_silence_random.mp3" length="286000" type="audio/mpeg"/>
             <itunes:duration>00:00:18</itunes:duration>
             <itunes:summary>Test episode with randomly varying audio segments and silence periods</itunes:summary>
-            <podcast:transcript url="https://example.com/transcripts/test_skip_silence_random.vtt" type="application/vtt"/>
+            <podcast:transcript url="http://192.168.86.244:8001/test_skip_silence_random.json" type="application/json"/>
+        </item>
+
+        <item>
+            <title>Episode 4: Extended Random Pattern Skip Silence Test</title>
+            <description>Comprehensive 15-minute test episode with extensive random audio segments and silence periods - realistic patterns with audio segments under 3 seconds and random silence durations from 100ms to 400ms for thorough skip silence testing</description>
+            <link>https://example.com/skip-silence-test/episode4</link>
+            <guid isPermaLink="false">skip-silence-test-episode-4</guid>
+            <pubDate>Fri, 09 Aug 2025 09:00:00 GMT</pubDate>
+            <enclosure url="http://192.168.86.244:8001/test_skip_silence_extended_random.mp3" length="14448460" type="audio/mpeg"/>
+            <itunes:duration>00:15:02</itunes:duration>
+            <itunes:summary>Comprehensive 15-minute test episode with extensive random audio segments and silence periods</itunes:summary>
+            <podcast:transcript url="http://192.168.86.244:8001/test_skip_silence_extended_random.json" type="application/json"/>
+        </item>
+
+        <item>
+            <title>Episode 5: New Extended Random Pattern Skip Silence Test</title>
+            <description>Advanced 15-minute test episode with new random audio segments and silence periods - enhanced patterns with audio segments up to 3 seconds and silence durations of at least 500ms for comprehensive skip silence validation</description>
+            <link>https://example.com/skip-silence-test/episode5</link>
+            <guid isPermaLink="false">skip-silence-test-episode-5</guid>
+            <pubDate>Fri, 09 Aug 2025 08:00:00 GMT</pubDate>
+            <enclosure url="http://192.168.86.244:8001/test_skip_silence_extended_random_new.mp3" length="14757092" type="audio/mpeg"/>
+            <itunes:duration>00:15:22</itunes:duration>
+            <itunes:summary>Advanced 15-minute test episode with new random audio segments and silence periods</itunes:summary>
+            <podcast:transcript url="http://192.168.86.244:8001/test_skip_silence_extended_random_new.json" type="application/json"/>
         </item>
     </channel>
 </rss>
