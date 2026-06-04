@@ -1,0 +1,23 @@
+# Prompts and Responses Log
+
+This file automatically logs all prompts and Claude's responses.
+
+---
+
+## Prompt
+**Time**: 2026-05-01 12:53:40 | **Session**: a7e0d27c
+
+```
+/init
+```
+
+### Response
+
+`★ Insight ─────────────────────────────────────`
+- The `net` modules follow a **service-interface/service split pattern** where the interface module (e.g., `:net:download:service-interface`) is depended on by consumers, while the concrete implementation is registered at startup in `:app`'s `ClientConfigurator`. This is a classic dependency inversion approach that keeps compile-time coupling low.
+- `AntennapodHttpClient` acts as the **centralized OkHttp singleton** for all HTTP in the app — all net modules should go through it rather than creating their own clients, so proxy, SSL, and auth interceptors apply universally.
+- Download and sync both use **AndroidX WorkManager** (`Worker` subclasses) rather than Android Services, giving the OS control over scheduling, battery optimization, and constraint checking.
+`─────────────────────────────────────────────────`
+
+---
+
