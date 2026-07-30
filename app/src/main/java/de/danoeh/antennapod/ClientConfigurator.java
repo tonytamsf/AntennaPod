@@ -21,6 +21,9 @@ import de.danoeh.antennapod.net.download.serviceinterface.DownloadServiceInterfa
 import de.danoeh.antennapod.net.download.service.feed.DownloadServiceInterfaceImpl;
 import de.danoeh.antennapod.net.common.NetworkUtils;
 import de.danoeh.antennapod.net.ssl.SslProviderInstaller;
+import de.danoeh.antennapod.plugin.api.MediaProcessorRegistry;
+import de.danoeh.antennapod.plugin.transcription.DisabledTranscriptionEngine;
+import de.danoeh.antennapod.plugin.transcription.TranscriptionMediaProcessor;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
 
 import de.danoeh.antennapod.ui.notifications.NotificationUtils;
@@ -55,6 +58,7 @@ public class ClientConfigurator {
         AntennapodHttpClient.setProxyConfig(UserPreferences.getProxyConfig());
         SleepTimerPreferences.init(context);
         NotificationUtils.createChannels(context);
+        MediaProcessorRegistry.register(new TranscriptionMediaProcessor(new DisabledTranscriptionEngine()));
         initialized = true;
     }
 }

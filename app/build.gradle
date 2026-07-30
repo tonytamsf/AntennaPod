@@ -60,6 +60,8 @@ dependencies {
     implementation project(':net:discovery')
     implementation project(':net:download:service-interface')
     implementation project(':net:download:service')
+    implementation project(':plugin:api')
+    implementation project(':plugin:transcription')
     implementation project(':net:ssl')
     implementation project(':net:sync:service')
     playImplementation project(':net:sync:wear-interface')
