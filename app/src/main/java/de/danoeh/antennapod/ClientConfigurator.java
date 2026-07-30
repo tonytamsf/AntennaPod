@@ -22,6 +22,8 @@ import de.danoeh.antennapod.net.download.service.feed.DownloadServiceInterfaceIm
 import de.danoeh.antennapod.net.common.NetworkUtils;
 import de.danoeh.antennapod.net.ssl.SslProviderInstaller;
 import de.danoeh.antennapod.plugin.api.MediaProcessorRegistry;
+import de.danoeh.antennapod.plugin.chaptermarkers.ChapterMarkerMediaProcessor;
+import de.danoeh.antennapod.plugin.chaptermarkers.DisabledChapterMarkerEngine;
 import de.danoeh.antennapod.plugin.transcription.DisabledTranscriptionEngine;
 import de.danoeh.antennapod.plugin.transcription.TranscriptionMediaProcessor;
 import de.danoeh.antennapod.storage.database.PodDBAdapter;
@@ -59,6 +61,7 @@ public class ClientConfigurator {
         SleepTimerPreferences.init(context);
         NotificationUtils.createChannels(context);
         MediaProcessorRegistry.register(new TranscriptionMediaProcessor(new DisabledTranscriptionEngine()));
+        MediaProcessorRegistry.register(new ChapterMarkerMediaProcessor(new DisabledChapterMarkerEngine()));
         initialized = true;
     }
 }

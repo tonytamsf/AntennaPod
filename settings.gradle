@@ -39,6 +39,7 @@ include ':parser:transcript'
 
 include ':plugin:api'
 include ':plugin:transcription'
+include ':plugin:chaptermarkers'
 
 include ':playback:base'
 include ':playback:cast'
