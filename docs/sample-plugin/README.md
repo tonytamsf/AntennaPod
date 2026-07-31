@@ -34,6 +34,10 @@ gh repo create my-antennapod-transcription-plugin --private
 # speech-to-text engine inside TranscriptionPluginService#transcribe(...)
 ```
 
+The directory contents are ready to be the root of that repository: a Gradle wrapper is bundled
+(`./gradlew`), and `.github/workflows/build.yml` builds the debug APK on every push/PR and uploads it
+as a downloadable artifact.
+
 `TranscriptionPluginService` here returns a small placeholder WebVTT cue so the end-to-end path can be
 exercised without bundling a model. Replace `transcribe(...)` with a real engine (on-device
 Whisper/Vosk, or a cloud API with a user-supplied key).

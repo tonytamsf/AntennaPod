@@ -19,12 +19,14 @@ From the AntennaPod repo root:
 The sample is a standalone project (its own Gradle build). Easiest path is Android Studio:
 **Open** `docs/sample-plugin/` as a project, let it sync, then Run the `app` config.
 
-Or from the command line, in `docs/sample-plugin/` with a local Gradle 8.13:
+Or from the command line, in `docs/sample-plugin/` (the bundled Gradle wrapper needs only a JDK):
 
 ```
-gradle wrapper        # once, to generate ./gradlew (or use Android Studio's Gradle)
 ./gradlew :app:installDebug
 ```
+
+CI also builds the debug APK on every push/PR via `.github/workflows/build.yml` and uploads it as a
+build artifact, so you can download a prebuilt APK from the Actions run instead of building locally.
 
 The plugin app installs as `com.example.antennapodplugin`. It has no launcher activity — it only
 exposes the plugin service, so you will not see an icon; that is expected.
