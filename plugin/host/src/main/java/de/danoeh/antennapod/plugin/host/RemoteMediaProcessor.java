@@ -43,6 +43,9 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
 
     @Override
     public boolean shouldProcess(@NonNull FeedMedia media) {
+        if (!PluginPreferences.isEnabled(descriptor.getId())) {
+            return false;
+        }
         if (media.getMediaType() != MediaType.AUDIO || media.getLocalFileUrl() == null) {
             return false;
         }

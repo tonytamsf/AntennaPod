@@ -47,6 +47,11 @@
             android:icon="@drawable/ic_notifications"/>
 
     <Preference
+            android:key="prefScreenPlugins"
+            android:title="@string/plugins_pref_title"
+            android:summary="@string/plugins_pref_summary"/>
+
+    <Preference
             android:key="prefScreenParentalControl"
             android:title="@string/pref_parental_control_title"
             android:summary="@string/pref_parental_control_sum"

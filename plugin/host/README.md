@@ -46,15 +46,17 @@ For each applicable episode, `RemoteMediaProcessor`:
 
 - Plugin services are gated behind the `de.danoeh.antennapod.permission.PLUGIN` permission declared by
   the host.
-- The intended model is **explicit user consent**: discovered plugins should be surfaced in a settings
-  screen and enabled by the user before they run (a follow-up; this prototype auto-registers all
-  discovered plugins). For a curated first-party ecosystem the permission could be raised to
-  `signature` so only co-signed plugins bind.
+- **Explicit user consent:** discovered plugins are disabled by default. `RemoteMediaProcessor` refuses
+  to run (`shouldProcess` returns `false`) unless the user has enabled the plugin, persisted via
+  `PluginPreferences`. The "Plugins" settings screen lists installed plugins with a per-plugin switch.
+- For a curated first-party ecosystem the permission could be raised to `signature` so only co-signed
+  plugins bind.
 
 ## Known limitations (prototype)
 
-- Discovery runs once at startup; newly installed plugins are picked up on next launch (a real impl
-  would also listen for `PACKAGE_ADDED`).
+- Discovery runs at startup and whenever the Plugins settings screen is opened; there is no
+  `PACKAGE_ADDED` listener yet, so a plugin installed while the app is running is registered on next
+  launch.
 - `RemoteMediaProcessor` currently applies the transcript result type; the chapter capability is
   declared in the contract and left as a straightforward extension.
 - Binding is synchronous on the download worker thread; heavy plugins argue for a dedicated
