@@ -7,6 +7,7 @@ import de.danoeh.antennapod.model.feed.FeedMedia;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 public final class MediaProcessorRegistry {
@@ -26,7 +27,12 @@ public final class MediaProcessorRegistry {
     }
 
     public static synchronized void unregister(@NonNull String id) {
-        processors.removeIf(processor -> processor.getId().equals(id));
+        Iterator<DownloadedMediaProcessor> iterator = processors.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().getId().equals(id)) {
+                iterator.remove();
+            }
+        }
     }
 
     @NonNull
