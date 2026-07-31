@@ -8,10 +8,12 @@ import androidx.preference.SwitchPreferenceCompat;
 
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.debug.PluginDebugOverlay;
+import de.danoeh.antennapod.plugin.host.EpisodeRetentionManager;
 import de.danoeh.antennapod.plugin.host.PluginDescriptor;
 import de.danoeh.antennapod.plugin.host.PluginManager;
 import de.danoeh.antennapod.plugin.host.PluginPreferences;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PluginsPreferencesFragment extends PreferenceFragmentCompat {
@@ -23,7 +25,9 @@ public class PluginsPreferencesFragment extends PreferenceFragmentCompat {
 
         addDebugOverlayPreference(screen);
 
-        List<PluginDescriptor> plugins = PluginManager.discover(requireContext());
+        List<PluginDescriptor> plugins = new ArrayList<>();
+        plugins.addAll(PluginManager.discover(requireContext()));
+        plugins.addAll(EpisodeRetentionManager.discover(requireContext()));
         if (plugins.isEmpty()) {
             Preference empty = new Preference(requireContext());
             empty.setTitle(R.string.plugins_none_installed_title);

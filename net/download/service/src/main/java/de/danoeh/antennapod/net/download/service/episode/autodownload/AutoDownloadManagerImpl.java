@@ -3,6 +3,7 @@ package de.danoeh.antennapod.net.download.service.episode.autodownload;
 import android.content.Context;
 import android.util.Log;
 import de.danoeh.antennapod.net.download.serviceinterface.AutoDownloadManager;
+import de.danoeh.antennapod.plugin.host.EpisodeRetentionManager;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,7 +39,11 @@ public class AutoDownloadManagerImpl extends AutoDownloadManager {
      */
     public Future<?> autodownloadUndownloadedItems(final Context context) {
         Log.d(TAG, "autodownloadUndownloadedItems");
-        return autodownloadExec.submit(downloadAlgorithm.autoDownloadUndownloadedItems(context));
+        final Runnable autoDownload = downloadAlgorithm.autoDownloadUndownloadedItems(context);
+        return autodownloadExec.submit(() -> {
+            autoDownload.run();
+            EpisodeRetentionManager.applyRetention(context);
+        });
     }
 
     /**

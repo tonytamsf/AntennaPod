@@ -16,6 +16,7 @@ dependencies {
     implementation project(':net:download:service-interface')
     implementation project(':net:sync:service-interface')
     implementation project(':plugin:api')
+    implementation project(':plugin:host')
     implementation project(':parser:media')
     implementation project(':parser:feed')
     implementation project(':storage:database')
