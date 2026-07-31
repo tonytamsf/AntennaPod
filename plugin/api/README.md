@@ -1,9 +1,11 @@
 # :plugin:api
 
-Extension-point API for optional, in-tree plugins that augment content as it flows through the app.
+Internal extension-point API for augmenting content as it flows through the download pipeline.
 
 This module is intentionally lightweight (it only depends on `:model`) so that pipeline modules such
-as `:net:download:service` can call into it without pulling in plugin implementations.
+as `:net:download:service` can call into it without pulling in any implementation. It is the seam that
+processors register against; the processors themselves may be in-process or backed by out-of-process
+plugin apps (see `:plugin:host`).
 
 ## Extension points
 
@@ -20,11 +22,13 @@ processors onto their own `WorkManager` job while keeping this contract unchange
 
 ## Registration
 
-Plugins register their processors at app startup in `ClientConfigurator`, following the same
-service-interface/impl registration pattern used elsewhere in the app:
+Processors register at app startup in `ClientConfigurator`. In the current architecture, external
+plugin apps are discovered and adapted into `DownloadedMediaProcessor` instances by `:plugin:host`:
 
 ```java
-MediaProcessorRegistry.register(new TranscriptionMediaProcessor(new DisabledTranscriptionEngine()));
+PluginManager.discoverAndRegister(context);
 ```
 
-Implementations live in their own `:plugin:*` modules and are wired in from `:app`.
+Each discovered plugin app becomes a `RemoteMediaProcessor` registered on `MediaProcessorRegistry`, so
+the download pipeline invokes external plugins through the same in-process seam without knowing they run
+in another process.
