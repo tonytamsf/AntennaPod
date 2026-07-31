@@ -10,6 +10,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import de.danoeh.antennapod.model.feed.Chapter;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.playback.MediaType;
@@ -20,6 +21,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -49,11 +52,15 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         if (media.getMediaType() != MediaType.AUDIO || media.getLocalFileUrl() == null) {
             return false;
         }
-        return requestedCapability(media) != 0;
+        return !applicableCapabilities(media).isEmpty();
     }
 
     @Override
     public void process(@NonNull Context context, @NonNull FeedMedia media) {
+        List<Integer> capabilities = applicableCapabilities(media);
+        if (capabilities.isEmpty()) {
+            return;
+        }
         Intent intent = new Intent(PluginContract.ACTION_MEDIA_PROCESSOR);
         intent.setComponent(new ComponentName(descriptor.getPackageName(), descriptor.getServiceName()));
         BlockingServiceConnection connection = new BlockingServiceConnection();
@@ -70,7 +77,9 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
                 return;
             }
             IMediaProcessorPlugin plugin = IMediaProcessorPlugin.Stub.asInterface(binder);
-            applyResult(media, invoke(plugin, media));
+            for (int capability : capabilities) {
+                applyResult(media, invoke(plugin, media, capability));
+            }
         } catch (Exception e) {
             Log.e(TAG, "Plugin invocation failed for " + descriptor.getId(), e);
         } finally {
@@ -80,32 +89,39 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         }
     }
 
+    private List<Integer> applicableCapabilities(FeedMedia media) {
+        List<Integer> capabilities = new ArrayList<>();
+        FeedItem item = media.getItem();
+        if (item == null) {
+            return capabilities;
+        }
+        if (descriptor.hasCapability(PluginContract.CAPABILITY_TRANSCRIPTION) && !item.hasTranscript()) {
+            capabilities.add(PluginContract.CAPABILITY_TRANSCRIPTION);
+        }
+        if (descriptor.hasCapability(PluginContract.CAPABILITY_CHAPTERS)
+                && !item.hasChapters()
+                && (item.getChapters() == null || item.getChapters().isEmpty())
+                && item.getPodcastIndexChapterUrl() == null) {
+            capabilities.add(PluginContract.CAPABILITY_CHAPTERS);
+        }
+        return capabilities;
+    }
+
     @Nullable
-    private PluginMediaResult invoke(IMediaProcessorPlugin plugin, FeedMedia media) throws Exception {
-        ParcelFileDescriptor descriptorFd = ParcelFileDescriptor.open(
+    private PluginMediaResult invoke(IMediaProcessorPlugin plugin, FeedMedia media, int capability) throws Exception {
+        ParcelFileDescriptor fileDescriptor = ParcelFileDescriptor.open(
                 new File(media.getLocalFileUrl()), ParcelFileDescriptor.MODE_READ_ONLY);
         try {
             PluginMediaRequest request = new PluginMediaRequest();
-            request.setCapability(requestedCapability(media));
-            request.setMediaFd(descriptorFd);
+            request.setCapability(capability);
+            request.setMediaFd(fileDescriptor);
             request.setMimeType(media.getMimeType());
             request.setEpisodeTitle(media.getEpisodeTitle());
             request.setDurationMs(media.getDuration());
             return plugin.process(request);
         } finally {
-            IOUtils.closeQuietly(descriptorFd);
+            IOUtils.closeQuietly(fileDescriptor);
         }
-    }
-
-    private int requestedCapability(FeedMedia media) {
-        FeedItem item = media.getItem();
-        if (item == null) {
-            return 0;
-        }
-        if (descriptor.hasCapability(PluginContract.CAPABILITY_TRANSCRIPTION) && !item.hasTranscript()) {
-            return PluginContract.CAPABILITY_TRANSCRIPTION;
-        }
-        return 0;
     }
 
     private void applyResult(FeedMedia media, @Nullable PluginMediaResult result) {
@@ -114,6 +130,8 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         }
         if (result.getResultType() == PluginContract.RESULT_TYPE_TRANSCRIPT) {
             applyTranscript(media, result);
+        } else if (result.getResultType() == PluginContract.RESULT_TYPE_CHAPTERS) {
+            applyChapters(media, result);
         }
     }
 
@@ -130,6 +148,20 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         TranscriptUtils.storeTranscript(media, result.getContent());
         DBWriter.setFeedItem(item, false);
         Log.d(TAG, "Applied transcript from plugin " + descriptor.getId());
+    }
+
+    private void applyChapters(FeedMedia media, PluginMediaResult result) {
+        FeedItem item = media.getItem();
+        if (item == null || result.getChapters().isEmpty()) {
+            return;
+        }
+        List<Chapter> chapters = new ArrayList<>();
+        for (PluginChapter chapter : result.getChapters()) {
+            chapters.add(new Chapter(chapter.getStartMs(), chapter.getTitle(), null, null));
+        }
+        item.setChapters(chapters);
+        DBWriter.setFeedItem(item, false);
+        Log.d(TAG, "Applied " + chapters.size() + " chapters from plugin " + descriptor.getId());
     }
 
     private static class BlockingServiceConnection implements ServiceConnection {

@@ -5,18 +5,18 @@ out-of-process plugin. In production it lives in its **own (private) GitHub repo
 its own APK — it is intentionally *not* part of the AntennaPod Gradle build (not listed in
 AntennaPod's `settings.gradle`).
 
-It demonstrates the transcription capability: when AntennaPod downloads an audio episode that has no
-transcript, it binds this app's service, hands over a read-only file descriptor for the audio, and
-receives a transcript back.
+It demonstrates both capabilities: when AntennaPod downloads an audio episode that has no transcript
+(and/or no chapters), it binds this app's service, hands over a read-only file descriptor for the
+audio, and receives a transcript and/or chapter markers back.
 
 ## How integration works
 
 1. **Contract.** The plugin compiles against the AntennaPod "plugin SDK": the AIDL interface
    (`IMediaProcessorPlugin`) and Parcelables (`PluginMediaRequest`, `PluginMediaResult`,
-   `PluginContract`) from AntennaPod's `:plugin:host` module. For a real repo, depend on the published
-   SDK artifact; this template copies the three `.aidl` files under `app/src/main/aidl/` and expects the
-   Parcelable/contract Java classes to be copied alongside them (same package
-   `de.danoeh.antennapod.plugin.host`).
+   `PluginChapter`, `PluginContract`) from AntennaPod's `:plugin:host` module. For a real repo you would
+   depend on a published SDK artifact; to keep this template self-contained and buildable, those files
+   are included directly under `app/src/main/aidl/` and `app/src/main/java/de/danoeh/antennapod/plugin/host/`
+   (same package as in AntennaPod).
 2. **Declaration.** `AndroidManifest.xml` exposes a `Service` with:
    - an `<intent-filter>` for `de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR`,
    - `android:permission="de.danoeh.antennapod.permission.PLUGIN"`,

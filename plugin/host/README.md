@@ -52,12 +52,21 @@ For each applicable episode, `RemoteMediaProcessor`:
 - For a curated first-party ecosystem the permission could be raised to `signature` so only co-signed
   plugins bind.
 
+## Capabilities
+
+Plugins declare a capability bitmask (`CAPABILITY_TRANSCRIPTION`, `CAPABILITY_CHAPTERS`). For each
+download, `RemoteMediaProcessor` requests every capability the plugin supports that the episode still
+needs, one binder call each, and applies the results: transcripts via `TranscriptUtils.storeTranscript`
+and chapters via `item.setChapters` + `DBWriter.setFeedItem`.
+
+## Live discovery
+
+`discoverAndRegister` registers a runtime `BroadcastReceiver` for `PACKAGE_ADDED` / `REMOVED` /
+`REPLACED`, so installing or uninstalling a plugin app while AntennaPod is running re-syncs the
+registry (`syncRegistrations`) without a restart.
+
 ## Known limitations (prototype)
 
-- Discovery runs at startup and whenever the Plugins settings screen is opened; there is no
-  `PACKAGE_ADDED` listener yet, so a plugin installed while the app is running is registered on next
-  launch.
-- `RemoteMediaProcessor` currently applies the transcript result type; the chapter capability is
-  declared in the contract and left as a straightforward extension.
 - Binding is synchronous on the download worker thread; heavy plugins argue for a dedicated
   `WorkManager` job (the extension-point contract is unaffected).
+- The package monitor is registered for the app process lifetime and not explicitly unregistered.

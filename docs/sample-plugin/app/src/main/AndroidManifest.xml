@@ -19,7 +19,7 @@
                 android:value="sample-transcription"/>
             <meta-data
                 android:name="de.danoeh.antennapod.plugin.CAPABILITIES"
-                android:value="1"/>
+                android:value="3"/>
         </service>
     </application>
 </manifest>
