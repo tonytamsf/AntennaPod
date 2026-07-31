@@ -1056,4 +1056,6 @@
     <string name="plugins_pref_summary">Enable installed plugin apps that process downloaded episodes</string>
     <string name="plugins_none_installed_title">No plugins installed</string>
     <string name="plugins_none_installed_summary">Install a compatible plugin app to see it here</string>
+    <string name="plugins_debug_overlay_title">Show debug overlay</string>
+    <string name="plugins_debug_overlay_summary">Display a floating window with live plugin activity. Plugins run when an episode finishes downloading.</string>
 </resources>

@@ -41,14 +41,27 @@ public final class MediaProcessorRegistry {
     }
 
     public static void runAll(@NonNull Context context, @NonNull FeedMedia media) {
-        for (DownloadedMediaProcessor processor : getProcessors()) {
+        List<DownloadedMediaProcessor> current = getProcessors();
+        PluginDebugLog.i(TAG, "Download finished for '" + media.getEpisodeTitle() + "'; evaluating "
+                + current.size() + " registered processor(s)");
+        if (current.isEmpty()) {
+            PluginDebugLog.w(TAG, "No processors registered. Are any plugins installed and enabled?");
+            return;
+        }
+        for (DownloadedMediaProcessor processor : current) {
             try {
-                if (processor.shouldProcess(media)) {
+                boolean shouldProcess = processor.shouldProcess(media);
+                PluginDebugLog.d(TAG, "Processor '" + processor.getId() + "' shouldProcess="
+                        + shouldProcess + " for '" + media.getEpisodeTitle() + "'");
+                if (shouldProcess) {
                     Log.d(TAG, "Running processor '" + processor.getId() + "' for " + media.getEpisodeTitle());
+                    PluginDebugLog.i(TAG, "Running processor '" + processor.getId() + "'");
                     processor.process(context, media);
+                    PluginDebugLog.i(TAG, "Processor '" + processor.getId() + "' finished");
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Processor '" + processor.getId() + "' failed", e);
+                PluginDebugLog.e(TAG, "Processor '" + processor.getId() + "' failed", e);
             }
         }
     }
