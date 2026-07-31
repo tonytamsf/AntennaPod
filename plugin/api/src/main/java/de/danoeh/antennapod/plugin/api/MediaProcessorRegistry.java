@@ -42,26 +42,26 @@ public final class MediaProcessorRegistry {
 
     public static void runAll(@NonNull Context context, @NonNull FeedMedia media) {
         List<DownloadedMediaProcessor> current = getProcessors();
-        PluginDebugLog.i(TAG, "Download finished for '" + media.getEpisodeTitle() + "'; evaluating "
+        PluginDebugLog.info(TAG, "Download finished for '" + media.getEpisodeTitle() + "'; evaluating "
                 + current.size() + " registered processor(s)");
         if (current.isEmpty()) {
-            PluginDebugLog.w(TAG, "No processors registered. Are any plugins installed and enabled?");
+            PluginDebugLog.warn(TAG, "No processors registered. Are any plugins installed and enabled?");
             return;
         }
         for (DownloadedMediaProcessor processor : current) {
             try {
                 boolean shouldProcess = processor.shouldProcess(media);
-                PluginDebugLog.d(TAG, "Processor '" + processor.getId() + "' shouldProcess="
+                PluginDebugLog.debug(TAG, "Processor '" + processor.getId() + "' shouldProcess="
                         + shouldProcess + " for '" + media.getEpisodeTitle() + "'");
                 if (shouldProcess) {
                     Log.d(TAG, "Running processor '" + processor.getId() + "' for " + media.getEpisodeTitle());
-                    PluginDebugLog.i(TAG, "Running processor '" + processor.getId() + "'");
+                    PluginDebugLog.info(TAG, "Running processor '" + processor.getId() + "'");
                     processor.process(context, media);
-                    PluginDebugLog.i(TAG, "Processor '" + processor.getId() + "' finished");
+                    PluginDebugLog.info(TAG, "Processor '" + processor.getId() + "' finished");
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Processor '" + processor.getId() + "' failed", e);
-                PluginDebugLog.e(TAG, "Processor '" + processor.getId() + "' failed", e);
+                PluginDebugLog.error(TAG, "Processor '" + processor.getId() + "' failed", e);
             }
         }
     }

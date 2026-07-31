@@ -111,7 +111,7 @@ public final class PluginDebugOverlay implements PluginDebugLog.Listener {
         windowManager.addView(rootView, layoutParams);
         renderAll();
         PluginDebugLog.addListener(this);
-        PluginDebugLog.i("PluginDebugOverlay", "Debug overlay attached. Waiting for plugin activity"
+        PluginDebugLog.info("PluginDebugOverlay", "Debug overlay attached. Waiting for plugin activity"
                 + " (plugins run when an episode finishes downloading).");
     }
 

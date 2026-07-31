@@ -64,19 +64,19 @@ public final class PluginDebugLog {
         void onPluginDebugEvent(@NonNull Event event);
     }
 
-    public static void d(@NonNull String tag, @NonNull String message) {
+    public static void debug(@NonNull String tag, @NonNull String message) {
         log(LEVEL_DEBUG, tag, message, null);
     }
 
-    public static void i(@NonNull String tag, @NonNull String message) {
+    public static void info(@NonNull String tag, @NonNull String message) {
         log(LEVEL_INFO, tag, message, null);
     }
 
-    public static void w(@NonNull String tag, @NonNull String message) {
+    public static void warn(@NonNull String tag, @NonNull String message) {
         log(LEVEL_WARN, tag, message, null);
     }
 
-    public static void e(@NonNull String tag, @NonNull String message, @Nullable Throwable throwable) {
+    public static void error(@NonNull String tag, @NonNull String message, @Nullable Throwable throwable) {
         String text = throwable == null ? message : message + ": " + throwable;
         log(LEVEL_ERROR, tag, text, throwable);
     }

@@ -48,21 +48,21 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
     @Override
     public boolean shouldProcess(@NonNull FeedMedia media) {
         if (!PluginPreferences.isEnabled(descriptor.getId())) {
-            PluginDebugLog.d(TAG, "Skipping '" + descriptor.getId() + "': disabled in settings");
+            PluginDebugLog.debug(TAG, "Skipping '" + descriptor.getId() + "': disabled in settings");
             return false;
         }
         if (media.getMediaType() != MediaType.AUDIO || media.getLocalFileUrl() == null) {
-            PluginDebugLog.d(TAG, "Skipping '" + descriptor.getId() + "': not local audio (type="
+            PluginDebugLog.debug(TAG, "Skipping '" + descriptor.getId() + "': not local audio (type="
                     + media.getMediaType() + ", localFile=" + media.getLocalFileUrl() + ")");
             return false;
         }
         List<Integer> capabilities = applicableCapabilities(media);
         if (capabilities.isEmpty()) {
-            PluginDebugLog.d(TAG, "Skipping '" + descriptor.getId()
+            PluginDebugLog.debug(TAG, "Skipping '" + descriptor.getId()
                     + "': episode already has the content this plugin would provide");
             return false;
         }
-        PluginDebugLog.d(TAG, "'" + descriptor.getId() + "' will run for capabilities " + capabilities);
+        PluginDebugLog.debug(TAG, "'" + descriptor.getId() + "' will run for capabilities " + capabilities);
         return true;
     }
 
@@ -77,40 +77,40 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         BlockingServiceConnection connection = new BlockingServiceConnection();
         boolean bound = false;
         try {
-            PluginDebugLog.i(TAG, "Binding to " + descriptor.getPackageName() + "/"
+            PluginDebugLog.info(TAG, "Binding to " + descriptor.getPackageName() + "/"
                     + descriptor.getServiceName() + " for '" + descriptor.getId() + "'");
             bound = appContext.bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound) {
                 Log.e(TAG, "Failed to bind plugin service " + descriptor.getId());
-                PluginDebugLog.e(TAG, "bindService returned false for '" + descriptor.getId()
+                PluginDebugLog.error(TAG, "bindService returned false for '" + descriptor.getId()
                         + "'. Check the plugin's permission and that the service is exported", null);
                 return;
             }
             IBinder binder = connection.awaitBinder(BIND_TIMEOUT_MS);
             if (binder == null) {
                 Log.e(TAG, "Timed out binding plugin service " + descriptor.getId());
-                PluginDebugLog.e(TAG, "Timed out after " + BIND_TIMEOUT_MS + "ms binding '"
+                PluginDebugLog.error(TAG, "Timed out after " + BIND_TIMEOUT_MS + "ms binding '"
                         + descriptor.getId() + "'", null);
                 return;
             }
-            PluginDebugLog.i(TAG, "Bound to '" + descriptor.getId() + "'; invoking "
+            PluginDebugLog.info(TAG, "Bound to '" + descriptor.getId() + "'; invoking "
                     + capabilities.size() + " capability call(s)");
             IMediaProcessorPlugin plugin = IMediaProcessorPlugin.Stub.asInterface(binder);
             for (int capability : capabilities) {
-                PluginDebugLog.i(TAG, "→ Sending request to '" + descriptor.getId() + "' capability="
+                PluginDebugLog.info(TAG, "→ Sending request to '" + descriptor.getId() + "' capability="
                         + capability + " title='" + media.getEpisodeTitle() + "' mime="
                         + media.getMimeType() + " durationMs=" + media.getDuration());
                 PluginMediaResult result = invoke(plugin, media, capability);
-                PluginDebugLog.i(TAG, "← Result from '" + descriptor.getId() + "': "
+                PluginDebugLog.info(TAG, "← Result from '" + descriptor.getId() + "': "
                         + describeResult(result));
                 applyResult(media, result);
             }
         } catch (Exception e) {
             Log.e(TAG, "Plugin invocation failed for " + descriptor.getId(), e);
-            PluginDebugLog.e(TAG, "Plugin invocation failed for '" + descriptor.getId() + "'", e);
+            PluginDebugLog.error(TAG, "Plugin invocation failed for '" + descriptor.getId() + "'", e);
         } finally {
             if (bound) {
-                PluginDebugLog.d(TAG, "Unbinding from '" + descriptor.getId() + "'");
+                PluginDebugLog.debug(TAG, "Unbinding from '" + descriptor.getId() + "'");
                 appContext.unbindService(connection);
             }
         }
@@ -182,27 +182,27 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
     private void applyTranscript(FeedMedia media, PluginMediaResult result) {
         FeedItem item = media.getItem();
         if (item == null || StringUtils.isEmpty(result.getContent()) || result.getContentMimeType() == null) {
-            PluginDebugLog.w(TAG, "Ignoring transcript from '" + descriptor.getId()
+            PluginDebugLog.warn(TAG, "Ignoring transcript from '" + descriptor.getId()
                     + "': missing item, empty content, or missing mime type");
             return;
         }
         item.setTranscriptUrl(result.getContentMimeType(), media.getTranscriptFileUrl());
         if (!item.hasTranscript()) {
             Log.w(TAG, "Plugin returned unsupported transcript format: " + result.getContentMimeType());
-            PluginDebugLog.w(TAG, "Plugin '" + descriptor.getId()
+            PluginDebugLog.warn(TAG, "Plugin '" + descriptor.getId()
                     + "' returned unsupported transcript format: " + result.getContentMimeType());
             return;
         }
         TranscriptUtils.storeTranscript(media, result.getContent());
         DBWriter.setFeedItem(item, false);
         Log.d(TAG, "Applied transcript from plugin " + descriptor.getId());
-        PluginDebugLog.i(TAG, "Applied transcript from plugin '" + descriptor.getId() + "'");
+        PluginDebugLog.info(TAG, "Applied transcript from plugin '" + descriptor.getId() + "'");
     }
 
     private void applyChapters(FeedMedia media, PluginMediaResult result) {
         FeedItem item = media.getItem();
         if (item == null || result.getChapters().isEmpty()) {
-            PluginDebugLog.w(TAG, "Ignoring chapters from '" + descriptor.getId()
+            PluginDebugLog.warn(TAG, "Ignoring chapters from '" + descriptor.getId()
                     + "': missing item or empty chapter list");
             return;
         }
@@ -214,7 +214,7 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         item.setChapters(chapters);
         DBWriter.setFeedItem(item, false);
         Log.d(TAG, "Applied " + chapters.size() + " chapters from plugin " + descriptor.getId());
-        PluginDebugLog.i(TAG, "Applied " + chapters.size() + " chapters from plugin '"
+        PluginDebugLog.info(TAG, "Applied " + chapters.size() + " chapters from plugin '"
                 + descriptor.getId() + "'");
     }
 
