@@ -1,9 +1,12 @@
 package de.danoeh.antennapod.plugin.host;
 
-import de.danoeh.antennapod.plugin.host.RetentionRequest;
+import de.danoeh.antennapod.plugin.host.PluginRetentionRequest;
+import de.danoeh.antennapod.plugin.host.PluginRetentionResult;
 
 interface IEpisodeRetentionPlugin {
     String getPluginId();
 
-    long[] selectEpisodesToDelete(in RetentionRequest request);
+    int getCapabilities();
+
+    PluginRetentionResult selectForDeletion(in PluginRetentionRequest request);
 }

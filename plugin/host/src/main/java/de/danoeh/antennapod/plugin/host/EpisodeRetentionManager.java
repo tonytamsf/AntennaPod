@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedItemFilter;
+import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.feed.SortOrder;
 import de.danoeh.antennapod.plugin.api.PluginDebugLog;
 import de.danoeh.antennapod.storage.database.DBReader;
@@ -49,7 +50,8 @@ public final class EpisodeRetentionManager {
                 continue;
             }
             String label = String.valueOf(service.loadLabel(packageManager));
-            result.add(new PluginDescriptor(id, label, service.packageName, service.name, 0));
+            int capabilities = service.metaData.getInt(PluginContract.META_DATA_CAPABILITIES, 0);
+            result.add(new PluginDescriptor(id, label, service.packageName, service.name, capabilities));
         }
         return result;
     }
@@ -107,25 +109,34 @@ public final class EpisodeRetentionManager {
 
     private static void deleteForFeed(Context appContext, PluginDescriptor descriptor,
                                       IEpisodeRetentionPlugin plugin, List<FeedItem> items) throws Exception {
-        RetentionRequest request = new RetentionRequest();
-        request.setFeedId(items.get(0).getFeedId());
-        if (items.get(0).getFeed() != null) {
-            request.setFeedTitle(items.get(0).getFeed().getTitle());
+        FeedItem first = items.get(0);
+        PluginRetentionRequest request = new PluginRetentionRequest();
+        request.setFeedId(first.getFeedId());
+        if (first.getFeed() != null) {
+            request.setFeedTitle(first.getFeed().getTitle());
+            request.setFeedUrl(first.getFeed().getDownloadUrl());
         }
-        List<RetentionEpisode> episodes = new ArrayList<>();
+        List<PluginEpisodeInfo> episodes = new ArrayList<>();
         for (FeedItem item : items) {
-            long pubDateMs = item.getPubDate() != null ? item.getPubDate().getTime() : 0;
-            episodes.add(new RetentionEpisode(item.getId(), pubDateMs, item.isPlayed(),
-                    item.isTagged(FeedItem.TAG_FAVORITE), item.isTagged(FeedItem.TAG_QUEUE)));
+            PluginEpisodeInfo info = new PluginEpisodeInfo();
+            info.setId(item.getId());
+            info.setTitle(item.getTitle());
+            info.setPublishedMs(item.getPubDate() != null ? item.getPubDate().getTime() : 0);
+            FeedMedia media = item.getMedia();
+            info.setDownloadedMs(media != null ? media.getDownloadDate() : 0);
+            info.setSizeBytes(media != null ? media.getSize() : 0);
+            info.setPlayed(item.isPlayed());
+            info.setDeletable(isSafeToDelete(item));
+            episodes.add(info);
         }
         request.setEpisodes(episodes);
 
-        long[] toDelete = plugin.selectEpisodesToDelete(request);
-        if (toDelete == null || toDelete.length == 0) {
+        PluginRetentionResult result = plugin.selectForDeletion(request);
+        if (result == null || !result.isSuccess()) {
             return;
         }
         Set<Long> deleteIds = new HashSet<>();
-        for (long id : toDelete) {
+        for (long id : result.getEpisodeIdsToDelete()) {
             deleteIds.add(id);
         }
         int deleted = 0;
