@@ -157,7 +157,8 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         }
         List<Chapter> chapters = new ArrayList<>();
         for (PluginChapter chapter : result.getChapters()) {
-            chapters.add(new Chapter(chapter.getStartMs(), chapter.getTitle(), null, null));
+            chapters.add(new Chapter(chapter.getStartMs(), chapter.getTitle(),
+                    chapter.getUrl(), chapter.getImageUrl()));
         }
         item.setChapters(chapters);
         DBWriter.setFeedItem(item, false);

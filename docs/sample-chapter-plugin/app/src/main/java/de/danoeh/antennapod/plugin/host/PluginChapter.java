@@ -7,18 +7,29 @@ import androidx.annotation.Nullable;
 public class PluginChapter implements Parcelable {
     private long startMs;
     @Nullable private String title;
+    @Nullable private String url;
+    @Nullable private String imageUrl;
 
     public PluginChapter() {
     }
 
     public PluginChapter(long startMs, @Nullable String title) {
+        this(startMs, title, null, null);
+    }
+
+    public PluginChapter(long startMs, @Nullable String title,
+                         @Nullable String url, @Nullable String imageUrl) {
         this.startMs = startMs;
         this.title = title;
+        this.url = url;
+        this.imageUrl = imageUrl;
     }
 
     protected PluginChapter(Parcel in) {
         startMs = in.readLong();
         title = in.readString();
+        url = in.readString();
+        imageUrl = in.readString();
     }
 
     public long getStartMs() {
@@ -38,10 +49,30 @@ public class PluginChapter implements Parcelable {
         this.title = title;
     }
 
+    @Nullable
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(@Nullable String url) {
+        this.url = url;
+    }
+
+    @Nullable
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(@Nullable String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeLong(startMs);
         dest.writeString(title);
+        dest.writeString(url);
+        dest.writeString(imageUrl);
     }
 
     @Override
