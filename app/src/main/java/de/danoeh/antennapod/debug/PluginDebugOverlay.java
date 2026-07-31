@@ -38,6 +38,7 @@ import java.util.Locale;
  * plugins in real time, backed by {@link PluginDebugLog}. Intended for on-device debugging only.
  */
 public final class PluginDebugOverlay implements PluginDebugLog.Listener {
+    @SuppressLint("StaticFieldLeak")
     private static final PluginDebugOverlay INSTANCE = new PluginDebugOverlay();
     private static final int MAX_VISIBLE_CHARS = 40000;
 
@@ -70,7 +71,7 @@ public final class PluginDebugOverlay implements PluginDebugLog.Listener {
      * @return true if the overlay can be shown right now, false if a permission request was started.
      */
     public boolean ensurePermission(@NonNull Activity activity) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(activity)) {
+        if (Settings.canDrawOverlays(activity)) {
             return true;
         }
         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
