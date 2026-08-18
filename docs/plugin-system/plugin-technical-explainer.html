@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AntennaPod Plugin Architecture — Technical Explainer</title>
+</head>
+<body>
+<style>
+  :root {
+    --ground: #F3F5F9;
+    --surface: #E8ECF3;
+    --card: #FFFFFF;
+    --ink: #0E1726;
+    --ink-soft: #3D4A5C;
+    --ink-muted: #8692A2;
+    --blue: #2B6CB0;
+    --blue-soft: #E3EDF7;
+    --blue-dim: #1E4E7E;
+    --green: #2D8659;
+    --green-soft: #E3F2EB;
+    --orange: #C05621;
+    --orange-soft: #FDF0E6;
+    --border: #D4DAE3;
+    --code-bg: #EDF0F5;
+    --shadow: 0 1px 4px rgba(14,23,38,.06);
+    --diagram-bg: #FAFBFD;
+    --diagram-stroke: #0E1726;
+    --diagram-fill-host: #E3EDF7;
+    --diagram-fill-plugin: #E3F2EB;
+    --diagram-fill-data: #FDF0E6;
+    --diagram-accent: #2B6CB0;
+    --diagram-green: #2D8659;
+    --diagram-orange: #C05621;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1117;
+      --surface: #161B24;
+      --card: #1C222D;
+      --ink: #D8DEE8;
+      --ink-soft: #9CA5B4;
+      --ink-muted: #5E6878;
+      --blue: #5B9BD5;
+      --blue-soft: #1A2840;
+      --blue-dim: #7DB8EC;
+      --green: #4CC88A;
+      --green-soft: #152A1F;
+      --orange: #F0944E;
+      --orange-soft: #2A1F14;
+      --border: #2A3040;
+      --code-bg: #161B24;
+      --shadow: 0 1px 4px rgba(0,0,0,.3);
+      --diagram-bg: #131820;
+      --diagram-stroke: #D8DEE8;
+      --diagram-fill-host: #1A2840;
+      --diagram-fill-plugin: #152A1F;
+      --diagram-fill-data: #2A1F14;
+      --diagram-accent: #5B9BD5;
+      --diagram-green: #4CC88A;
+      --diagram-orange: #F0944E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1117;
+    --surface: #161B24;
+    --card: #1C222D;
+    --ink: #D8DEE8;
+    --ink-soft: #9CA5B4;
+    --ink-muted: #5E6878;
+    --blue: #5B9BD5;
+    --blue-soft: #1A2840;
+    --blue-dim: #7DB8EC;
+    --green: #4CC88A;
+    --green-soft: #152A1F;
+    --orange: #F0944E;
+    --orange-soft: #2A1F14;
+    --border: #2A3040;
+    --code-bg: #161B24;
+    --shadow: 0 1px 4px rgba(0,0,0,.3);
+    --diagram-bg: #131820;
+    --diagram-stroke: #D8DEE8;
+    --diagram-fill-host: #1A2840;
+    --diagram-fill-plugin: #152A1F;
+    --diagram-fill-data: #2A1F14;
+    --diagram-accent: #5B9BD5;
+    --diagram-green: #4CC88A;
+    --diagram-orange: #F0944E;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.72 system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* Header */
+  .header { margin-bottom: 48px; }
+  .header .eyebrow {
+    font: 600 .7rem/1 system-ui, sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 10px;
+  }
+  .header h1 {
+    font: 700 2rem/1.2 Georgia, 'Times New Roman', serif;
+    color: var(--ink);
+    text-wrap: balance;
+    margin-bottom: 10px;
+  }
+  .header .subtitle {
+    font-size: .95rem;
+    color: var(--ink-soft);
+    max-width: 620px;
+    line-height: 1.65;
+  }
+
+  /* Sections */
+  section { margin-bottom: 52px; }
+  h2 {
+    font: 700 1.4rem/1.3 Georgia, 'Times New Roman', serif;
+    color: var(--ink);
+    margin-bottom: 10px;
+    text-wrap: balance;
+  }
+  h3 {
+    font: 600 .95rem/1.4 system-ui, sans-serif;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  p { color: var(--ink-soft); margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Code */
+  code {
+    font: .84em/1.4 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font: .78rem/1.6 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+    color: var(--ink);
+    margin: 14px 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* Figures */
+  figure {
+    margin: 24px 0;
+    background: var(--diagram-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 20px 16px;
+    overflow-x: auto;
+  }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption {
+    margin-top: 12px;
+    font-size: .8rem;
+    color: var(--ink-muted);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* Callout */
+  .callout {
+    border-left: 3px solid var(--blue);
+    background: var(--blue-soft);
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 18px 0;
+    font-size: .9rem;
+    color: var(--ink-soft);
+  }
+  .callout strong { color: var(--ink); }
+  .callout code { background: rgba(128,128,128,.12); }
+
+  .callout-orange {
+    border-left-color: var(--orange);
+    background: var(--orange-soft);
+  }
+
+  /* Card grid */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin-bottom: 6px; }
+  .card p { font-size: .85rem; margin-bottom: 0; }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 52px 0; }
+
+  /* Inline list */
+  ul.spaced { padding-left: 20px; margin: 10px 0; }
+  ul.spaced li {
+    color: var(--ink-soft);
+    margin: 6px 0;
+    font-size: .92rem;
+    line-height: 1.6;
+  }
+
+  /* Mermaid */
+  pre.mermaid {
+    background: var(--diagram-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 20px;
+    text-align: center;
+    font-size: .85rem;
+    overflow-x: auto;
+  }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .82rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+    color: var(--ink-soft);
+  }
+  th {
+    background: var(--surface);
+    font-weight: 600;
+    color: var(--ink);
+    font-size: .75rem;
+    letter-spacing: .03em;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: .8rem;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+</style>
+
+<div class="page">
+
+<div class="header">
+  <div class="eyebrow">AntennaPod &middot; PR #14</div>
+  <h1>Plugin Architecture for Engineers</h1>
+  <p class="subtitle">A technical walkthrough of how AntennaPod runs third-party plugins as separate processes over Android IPC. Written for engineers who know systems but not necessarily Android.</p>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>The core problem</h2>
+<p>AntennaPod wants third-party plugins to process downloaded podcast audio — generating transcripts, chapter markers, or retention rules. The constraints:</p>
+<ul class="spaced">
+  <li><strong>No dynamic code loading.</strong> Google Play prohibits apps from downloading and executing code. So plugins can't be JARs, DEX files, or WASM blobs loaded at runtime.</li>
+  <li><strong>Process isolation.</strong> A buggy plugin must not crash the podcast player.</li>
+  <li><strong>Least-privilege.</strong> A plugin should see exactly one audio file, never the app's database or user data.</li>
+  <li><strong>On-device only.</strong> No cloud uploads. AntennaPod is privacy-first FOSS.</li>
+</ul>
+<p>The solution: each plugin is a <strong>separate Android app</strong> (its own APK, own process). The host app discovers them on the device and communicates over Android's built-in IPC mechanism.</p>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>The process boundary</h2>
+<p>The most important thing to understand: the plugin code <strong>never runs inside AntennaPod's process</strong>. The two apps communicate over Android's "Binder" IPC — think of it as a local RPC channel built into the OS kernel, similar to Unix domain sockets but with typed interfaces and OS-managed lifecycle.</p>
+
+<figure>
+  <svg viewBox="0 0 700 310" role="img" aria-label="Two process boxes separated by a binder IPC boundary. AntennaPod's process contains the download pipeline, registry, and RemoteMediaProcessor. The plugin process contains the plugin service. A read-only file descriptor crosses the boundary to the plugin, and a result struct returns.">
+    <!-- Host process -->
+    <rect x="10" y="10" width="310" height="290" rx="10" fill="var(--diagram-fill-host)" stroke="var(--diagram-accent)" stroke-width="1.5"/>
+    <text x="165" y="34" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="var(--diagram-accent)">ANTENNAPOD PROCESS</text>
+
+    <!-- Download pipeline -->
+    <rect x="30" y="52" width="180" height="36" rx="6" fill="var(--card)" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <text x="120" y="75" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="var(--diagram-stroke)">MediaDownloadedHandler</text>
+
+    <!-- Arrow down -->
+    <line x1="120" y1="88" x2="120" y2="108" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <polygon points="116,104 120,112 124,104" fill="var(--diagram-stroke)"/>
+
+    <!-- Registry -->
+    <rect x="30" y="112" width="180" height="36" rx="6" fill="var(--card)" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <text x="120" y="135" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="var(--diagram-stroke)">MediaProcessorRegistry</text>
+
+    <!-- Arrow down -->
+    <line x1="120" y1="148" x2="120" y2="168" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <polygon points="116,164 120,172 124,164" fill="var(--diagram-stroke)"/>
+
+    <!-- RemoteMediaProcessor -->
+    <rect x="30" y="172" width="180" height="36" rx="6" fill="var(--card)" stroke="var(--diagram-accent)" stroke-width="2"/>
+    <text x="120" y="195" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="600" fill="var(--diagram-accent)">RemoteMediaProcessor</text>
+
+    <!-- Seam label -->
+    <rect x="30" y="222" width="270" height="26" rx="5" fill="none" stroke="var(--diagram-stroke)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="165" y="239" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--ink-muted)">implements DownloadedMediaProcessor</text>
+
+    <!-- Discovery -->
+    <rect x="224" y="52" width="80" height="36" rx="6" fill="var(--card)" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <text x="264" y="69" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--diagram-stroke)">Plugin</text>
+    <text x="264" y="81" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--diagram-stroke)">Manager</text>
+
+    <!-- Arrow from discovery to registry -->
+    <line x1="224" y1="76" x2="215" y2="126" stroke="var(--diagram-stroke)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="230" y="100" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">registers</text>
+
+    <!-- Binder boundary -->
+    <line x1="348" y1="10" x2="348" y2="300" stroke="var(--diagram-orange)" stroke-width="2" stroke-dasharray="6,4"/>
+    <text x="348" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="var(--diagram-orange)">BINDER IPC (kernel)</text>
+
+    <!-- Plugin process -->
+    <rect x="376" y="10" width="314" height="290" rx="10" fill="var(--diagram-fill-plugin)" stroke="var(--diagram-green)" stroke-width="1.5"/>
+    <text x="533" y="34" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="var(--diagram-green)">PLUGIN PROCESS (separate APK)</text>
+
+    <!-- Plugin service -->
+    <rect x="436" y="120" width="200" height="68" rx="8" fill="var(--card)" stroke="var(--diagram-green)" stroke-width="2"/>
+    <text x="536" y="146" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="600" fill="var(--diagram-green)">IMediaProcessorPlugin</text>
+    <text x="536" y="162" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--ink-muted)">getCapabilities()</text>
+    <text x="536" y="176" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--ink-muted)">process(request) → result</text>
+
+    <!-- Request arrow -->
+    <line x1="210" y1="186" x2="432" y2="156" stroke="var(--diagram-orange)" stroke-width="1.5"/>
+    <polygon points="428,152 436,155 430,160" fill="var(--diagram-orange)"/>
+    <rect x="270" y="162" width="105" height="20" rx="4" fill="var(--diagram-fill-data)" stroke="var(--diagram-orange)" stroke-width="1"/>
+    <text x="322" y="176" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="var(--diagram-orange)">read-only file FD</text>
+
+    <!-- Result arrow -->
+    <line x1="436" y1="170" x2="212" y2="196" stroke="var(--diagram-accent)" stroke-width="1.5"/>
+    <polygon points="216,192 208,196 214,200" fill="var(--diagram-accent)"/>
+    <rect x="278" y="192" width="88" height="20" rx="4" fill="var(--blue-soft)" stroke="var(--diagram-accent)" stroke-width="1"/>
+    <text x="322" y="206" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="var(--diagram-accent)">result struct</text>
+
+    <!-- Plugin impl -->
+    <rect x="446" y="210" width="180" height="44" rx="6" fill="var(--card)" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <text x="536" y="230" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--diagram-stroke)">TranscriptionPlugin</text>
+    <text x="536" y="244" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--diagram-stroke)">ChapterPlugin</text>
+  </svg>
+  <figcaption>The host and plugin run in separate OS processes. <code>RemoteMediaProcessor</code> bridges the gap — the download pipeline only sees the in-process interface on the left.</figcaption>
+</figure>
+
+<div class="callout">
+  <strong>Android-specific concept: AIDL.</strong> AIDL (Android Interface Definition Language) is Android's IDL for defining typed IPC interfaces. You write a <code>.aidl</code> file describing methods and data types; the build generates stub/proxy classes that serialize calls across the process boundary over the kernel's Binder driver. Think of it as gRPC but local-only and built into the OS.
+</div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>The adapter seam</h2>
+<p>The download pipeline has <strong>zero awareness of plugins, IPC, or processes</strong>. It calls a simple in-process interface:</p>
+
+<pre><code>interface DownloadedMediaProcessor {
+    String getId();
+    boolean shouldProcess(FeedMedia media);
+    void process(Context context, FeedMedia media);
+}</code></pre>
+
+<p><code>RemoteMediaProcessor</code> implements this interface and encapsulates all the cross-process complexity: binding the remote service, marshalling the request, handling timeouts, applying results. This is a textbook <strong>Adapter pattern</strong> — the seam where the rest of the codebase ends and the plugin world begins.</p>
+
+<figure>
+  <svg viewBox="0 0 700 180" role="img" aria-label="The download pipeline calls MediaProcessorRegistry which holds a list of DownloadedMediaProcessor implementations. RemoteMediaProcessor is one such implementation that wraps AIDL calls. The pipeline never knows about AIDL.">
+    <!-- Pipeline -->
+    <rect x="10" y="60" width="150" height="56" rx="8" fill="var(--card)" stroke="var(--diagram-stroke)" stroke-width="1.5"/>
+    <text x="85" y="84" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="var(--diagram-stroke)">Download Pipeline</text>
+    <text x="85" y="100" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">(MediaDownloadedHandler)</text>
+
+    <!-- Arrow -->
+    <line x1="160" y1="88" x2="196" y2="88" stroke="var(--diagram-stroke)" stroke-width="1.5"/>
+    <polygon points="192,84 200,88 192,92" fill="var(--diagram-stroke)"/>
+    <text x="178" y="80" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">calls</text>
+
+    <!-- Registry -->
+    <rect x="200" y="40" width="160" height="96" rx="8" fill="var(--card)" stroke="var(--diagram-accent)" stroke-width="2"/>
+    <text x="280" y="62" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-weight="600" fill="var(--diagram-accent)">Registry</text>
+    <text x="280" y="78" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">holds List&lt;Processor&gt;</text>
+
+    <!-- Interface label -->
+    <rect x="210" y="90" width="140" height="20" rx="4" fill="var(--blue-soft)" stroke="var(--diagram-accent)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="280" y="104" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="var(--diagram-accent)">DownloadedMediaProcessor</text>
+
+    <!-- Interface label below -->
+    <text x="280" y="128" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">interface (the seam)</text>
+
+    <!-- Arrow to adapter -->
+    <line x1="360" y1="88" x2="410" y2="50" stroke="var(--diagram-accent)" stroke-width="1"/>
+    <polygon points="406,47 414,49 408,54" fill="var(--diagram-accent)"/>
+
+    <line x1="360" y1="88" x2="410" y2="128" stroke="var(--diagram-accent)" stroke-width="1"/>
+    <polygon points="406,131 414,129 408,124" fill="var(--diagram-accent)"/>
+
+    <!-- RemoteMediaProcessor (adapter) -->
+    <rect x="414" y="26" width="176" height="50" rx="8" fill="var(--diagram-fill-host)" stroke="var(--diagram-accent)" stroke-width="2"/>
+    <text x="502" y="48" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" font-weight="600" fill="var(--diagram-accent)">RemoteMediaProcessor</text>
+    <text x="502" y="64" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">binds AIDL, marshals IPC</text>
+
+    <!-- Another processor placeholder -->
+    <rect x="414" y="104" width="176" height="50" rx="8" fill="var(--diagram-fill-plugin)" stroke="var(--diagram-green)" stroke-width="1.5"/>
+    <text x="502" y="126" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--diagram-green)">EpisodeRetentionMgr</text>
+    <text x="502" y="142" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">second plugin type</text>
+
+    <!-- Arrow to remote -->
+    <line x1="590" y1="51" x2="636" y2="51" stroke="var(--diagram-orange)" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <polygon points="632,47 640,51 632,55" fill="var(--diagram-orange)"/>
+    <text x="612" y="44" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="var(--diagram-orange)">IPC</text>
+
+    <!-- Remote plugin -->
+    <rect x="640" y="30" width="50" height="42" rx="6" fill="var(--diagram-fill-plugin)" stroke="var(--diagram-green)" stroke-width="1.5"/>
+    <text x="665" y="50" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--diagram-green)">Plugin</text>
+    <text x="665" y="62" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--diagram-green)">App</text>
+  </svg>
+  <figcaption>The download pipeline only sees <code>DownloadedMediaProcessor</code>. <code>RemoteMediaProcessor</code> adapts the entire IPC mechanism behind that interface — the seam is one method wide.</figcaption>
+</figure>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>End-to-end sequence</h2>
+<p>This is the full lifecycle from episode download to content appearing in the UI:</p>
+
+<pre class="mermaid">
+sequenceDiagram
+    participant DL as Download Pipeline
+    participant Reg as Registry
+    participant RMP as RemoteMediaProcessor
+    participant OS as Android OS (Binder)
+    participant Plugin as Plugin App
+
+    DL->>Reg: runAll(context, media)
+    Reg->>RMP: shouldProcess(media)?
+    Note right of RMP: Checks: enabled?<br/>Local audio?<br/>Content missing?
+    RMP-->>Reg: true
+    Reg->>RMP: process(context, media)
+    RMP->>OS: bindService(pluginIntent)
+    OS->>Plugin: onCreate / onBind
+    Plugin-->>RMP: IBinder connection
+    RMP->>Plugin: process(PluginMediaRequest)
+    Note right of RMP: Sends read-only<br/>file descriptor
+    Plugin-->>RMP: PluginMediaResult
+    Note left of Plugin: transcript text<br/>or chapter list
+    RMP->>RMP: apply result via<br/>existing pipelines
+    RMP->>OS: unbindService()
+</pre>
+
+<div class="callout">
+  <strong>The 15-second timeout.</strong> <code>RemoteMediaProcessor</code> uses a <code>CountDownLatch</code> with a 15-second deadline when binding. If the plugin doesn't connect in time, the processor moves on. A hung plugin can't block the download pipeline indefinitely.
+</div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>Discovery: how plugins are found</h2>
+
+<figure>
+  <svg viewBox="0 0 700 240" role="img" aria-label="PluginManager queries PackageManager for services matching the plugin action. Each matching service's metadata is read for plugin ID and capabilities. Results are wrapped in RemoteMediaProcessor and registered. A BroadcastReceiver on PACKAGE_ADDED re-syncs live.">
+    <!-- PluginManager -->
+    <rect x="10" y="30" width="140" height="50" rx="8" fill="var(--card)" stroke="var(--diagram-accent)" stroke-width="2"/>
+    <text x="80" y="52" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="600" fill="var(--diagram-accent)">PluginManager</text>
+    <text x="80" y="68" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">discover(context)</text>
+
+    <!-- Arrow to PackageManager -->
+    <line x1="150" y1="55" x2="196" y2="55" stroke="var(--diagram-stroke)" stroke-width="1.5"/>
+    <polygon points="192,51 200,55 192,59" fill="var(--diagram-stroke)"/>
+    <text x="173" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="var(--ink-muted)">queries</text>
+
+    <!-- PackageManager -->
+    <rect x="200" y="30" width="160" height="50" rx="8" fill="var(--surface)" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <text x="280" y="52" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="var(--diagram-stroke)">PackageManager</text>
+    <text x="280" y="67" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="var(--ink-muted)">queryIntentServices(action)</text>
+
+    <!-- Arrow down from PM -->
+    <line x1="280" y1="80" x2="280" y2="104" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <polygon points="276,100 280,108 284,100" fill="var(--diagram-stroke)"/>
+
+    <!-- Matching services -->
+    <rect x="200" y="108" width="160" height="44" rx="6" fill="var(--card)" stroke="var(--diagram-stroke)" stroke-width="1"/>
+    <text x="280" y="126" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="var(--diagram-stroke)">Matching services</text>
+    <text x="280" y="142" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">read meta-data: ID + capabilities</text>
+
+    <!-- Arrow right to registry -->
+    <line x1="360" y1="130" x2="420" y2="130" stroke="var(--diagram-accent)" stroke-width="1.5"/>
+    <polygon points="416,126 424,130 416,134" fill="var(--diagram-accent)"/>
+    <text x="390" y="122" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="var(--ink-muted)">wrap &amp; register</text>
+
+    <!-- Registry -->
+    <rect x="424" y="108" width="150" height="44" rx="8" fill="var(--card)" stroke="var(--diagram-accent)" stroke-width="2"/>
+    <text x="499" y="128" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" font-weight="600" fill="var(--diagram-accent)">Registry</text>
+    <text x="499" y="142" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">List&lt;RemoteMediaProcessor&gt;</text>
+
+    <!-- Live re-sync -->
+    <rect x="10" y="170" width="200" height="56" rx="8" fill="var(--diagram-fill-data)" stroke="var(--diagram-orange)" stroke-width="1.5"/>
+    <text x="110" y="192" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" font-weight="600" fill="var(--diagram-orange)">BroadcastReceiver</text>
+    <text x="110" y="208" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">PACKAGE_ADDED / REMOVED</text>
+    <text x="110" y="220" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">/ REPLACED</text>
+
+    <!-- Arrow from receiver to PluginManager -->
+    <line x1="110" y1="170" x2="80" y2="84" stroke="var(--diagram-orange)" stroke-width="1" stroke-dasharray="5,3"/>
+    <polygon points="76,87 80,80 84,87" fill="var(--diagram-orange)"/>
+    <text x="72" y="126" font-family="system-ui, sans-serif" font-size="7.5" fill="var(--diagram-orange)">re-syncs</text>
+
+    <!-- Android 11+ note -->
+    <rect x="424" y="172" width="260" height="48" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-width="1"/>
+    <text x="554" y="192" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" fill="var(--ink-soft)">On Android 11+, the host must declare</text>
+    <text x="554" y="208" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8.5" fill="var(--ink-soft)">&lt;queries&gt; to see plugin packages</text>
+  </svg>
+  <figcaption>Discovery at startup via <code>PackageManager</code>, with live re-sync when a plugin app is installed or removed. No restart needed.</figcaption>
+</figure>
+
+<p>Each plugin's Android manifest declares a <code>&lt;service&gt;</code> with an intent-filter for the plugin action, plus <code>&lt;meta-data&gt;</code> carrying its plugin ID and a capability bitmask. This is how AntennaPod knows what the plugin can do <em>before</em> binding it.</p>
+
+<div class="callout">
+  <strong>Android-specific concept: <code>&lt;queries&gt;</code>.</strong> Starting with Android 11, an app can't see other installed packages by default (package visibility filtering). The host must declare a <code>&lt;queries&gt;</code> block listing the intent actions it wants to discover. Without this, <code>queryIntentServices()</code> returns an empty list even if plugins are installed.
+</div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>What crosses the wire</h2>
+<p>The IPC contract is intentionally narrow. Two data structures cross the process boundary:</p>
+
+<div class="card-grid">
+  <div class="card">
+    <h3>PluginMediaRequest &rarr;</h3>
+    <p><code>capability</code> — which single capability to invoke<br>
+    <code>mediaFd</code> — a <strong>read-only file descriptor</strong> for the audio<br>
+    <code>mimeType</code>, <code>episodeTitle</code>, <code>durationMs</code></p>
+  </div>
+  <div class="card">
+    <h3>&larr; PluginMediaResult</h3>
+    <p><code>success</code>, <code>resultType</code> (NONE / TRANSCRIPT / CHAPTERS)<br>
+    <code>content</code> + <code>contentMimeType</code> — transcript text<br>
+    <code>chapters</code> — list of <code>PluginChapter</code> (startMs, title, url, imageUrl)</p>
+  </div>
+</div>
+
+<div class="callout-orange callout">
+  <strong>Why a file descriptor, not bytes?</strong> Android's Binder has a ~1 MB transaction size limit. A podcast episode can be hundreds of megabytes. By passing a <code>ParcelFileDescriptor</code> opened read-only, the plugin gets a kernel-level handle to the file without any data being copied through the Binder buffer. The plugin can read/seek the audio file directly, the host controls access (read-only, single file), and the Binder stays within its limits.
+</div>
+
+<p>Both structures are <strong>Parcelable</strong> — Android's serialization protocol for crossing process boundaries. Think of it as Protocol Buffers built into the framework: fields are written to and read from a <code>Parcel</code> in strict order, and the build tools generate the serialization code from the AIDL definitions.</p>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>Module structure</h2>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>Module</th><th>Purpose</th><th>Key types</th><th>Depends on</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>:plugin:api</code></td>
+      <td>The in-process seam. Defines the interface the download pipeline uses. No Android IPC knowledge here.</td>
+      <td><code>DownloadedMediaProcessor</code> (interface), <code>MediaProcessorRegistry</code>, <code>PluginDebugLog</code></td>
+      <td>Nothing plugin-specific</td>
+    </tr>
+    <tr>
+      <td><code>:plugin:host</code></td>
+      <td>All the cross-process machinery. AIDL definitions, discovery, binding, marshalling, result application.</td>
+      <td><code>PluginManager</code>, <code>RemoteMediaProcessor</code>, <code>PluginPreferences</code>, <code>EpisodeRetentionManager</code>, all AIDL + Parcelable types</td>
+      <td><code>:plugin:api</code></td>
+    </tr>
+    <tr>
+      <td><code>:app</code></td>
+      <td>Wiring and UI. Declares permissions, registers discovery at startup, provides the Settings screen.</td>
+      <td><code>PluginsPreferencesFragment</code>, <code>PluginDebugOverlay</code></td>
+      <td><code>:plugin:host</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>The dependency direction means the download pipeline (<code>:net:download:service</code>) only depends on <code>:plugin:api</code> — it has no transitive dependency on AIDL, Binder, or any IPC machinery. You could swap out the entire host implementation without touching the pipeline.</p>
+</section>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>Security model in one picture</h2>
+
+<figure>
+  <svg viewBox="0 0 700 200" role="img" aria-label="Concentric rings showing the layers of protection: outermost is user opt-in (disabled by default), then Android package/process isolation, then the custom PLUGIN permission, then the read-only file descriptor at the center as the only data that crosses all rings.">
+    <!-- Outermost ring -->
+    <ellipse cx="350" cy="100" rx="340" ry="92" fill="none" stroke="var(--diagram-accent)" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="350" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="var(--diagram-accent)">USER OPT-IN (disabled by default, per-plugin toggle)</text>
+
+    <!-- Second ring -->
+    <ellipse cx="350" cy="100" rx="260" ry="72" fill="none" stroke="var(--diagram-green)" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="350" y="42" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="var(--diagram-green)">OS PROCESS ISOLATION (separate APK, separate sandbox)</text>
+
+    <!-- Third ring -->
+    <ellipse cx="350" cy="100" rx="178" ry="52" fill="none" stroke="var(--diagram-orange)" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="350" y="62" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="var(--diagram-orange)">CUSTOM PERMISSION (de.danoeh.antennapod.permission.PLUGIN)</text>
+
+    <!-- Center -->
+    <ellipse cx="350" cy="108" rx="90" ry="30" fill="var(--diagram-fill-data)" stroke="var(--diagram-orange)" stroke-width="2"/>
+    <text x="350" y="104" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-weight="600" fill="var(--diagram-orange)">read-only FD</text>
+    <text x="350" y="120" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">single audio file</text>
+
+    <!-- Labels at sides -->
+    <text x="40" y="110" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">no database</text>
+    <text x="40" y="124" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">no preferences</text>
+    <text x="40" y="138" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">no network access*</text>
+
+    <text x="604" y="110" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">no write access</text>
+    <text x="604" y="124" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">no other files</text>
+    <text x="604" y="138" font-family="system-ui, sans-serif" font-size="8" fill="var(--ink-muted)">15s timeout</text>
+  </svg>
+  <figcaption>Three concentric trust boundaries. Only a read-only file descriptor for one audio file reaches the plugin at the center.</figcaption>
+</figure>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<section>
+<h2>Why AIDL over the alternatives</h2>
+<p>The team evaluated seven architectures. The two non-negotiable constraints — <strong>Play Store compliance</strong> (no dynamic code loading) and <strong>privacy</strong> (no cloud uploads) — eliminate the two simplest options immediately. Of what remains, only AIDL bound services model "process this file and return structured data" natively:</p>
+
+<ul class="spaced">
+  <li><strong>Broadcasts</strong> — no clean synchronous response path; modern Android restricts implicit broadcasts in the background.</li>
+  <li><strong>ContentProviders</strong> — CRUD semantics are a poor fit for "process and return"; capability discovery must be bolted on.</li>
+  <li><strong>WASM/scripting sandbox</strong> — large engineering effort; grey area on Play policy; hard to access native audio/ML libraries.</li>
+  <li><strong>Bundled Gradle modules</strong> — simplest, but not a third-party ecosystem. Every plugin requires an AntennaPod release.</li>
+</ul>
+
+<p>AIDL hits every requirement: typed <code>process(request) → result</code> semantics, real process isolation, file-descriptor handoff that respects the binder size limit, and plugins that ship and update as ordinary Android apps. The cost — AIDL boilerplate and a binding lifecycle — is fully contained behind the one-method <code>DownloadedMediaProcessor</code> seam.</p>
+</section>
+
+<div class="footer">
+  Architecture reference for <a href="https://github.com/tonytamsf/AntennaPod/pull/14">AntennaPod PR #14</a>. See <code>plugin/api/README.md</code> and <code>plugin/host/README.md</code> for implementation details.
+</div>
+
+</div>
+</body>
+</html>

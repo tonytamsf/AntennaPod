@@ -15,7 +15,6 @@ import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.common.IntentUtils;
 import de.danoeh.antennapod.ui.preferences.screen.AnimatedPreferenceFragment;
-import de.danoeh.antennapod.ui.preferences.screen.ParentalControlDialog;
 import de.danoeh.antennapod.ui.preferences.screen.about.AboutFragment;
 import de.danoeh.antennapod.ui.preferences.screen.bugreport.BugReportFragment;
 
@@ -35,6 +34,7 @@ public class MainPreferencesFragment extends AnimatedPreferenceFragment {
     private static final String PREF_NOTIFICATION = "notifications";
     private static final String PREF_CONTRIBUTE = "prefContribute";
     private static final String PREF_SCREEN_PARENTAL_CONTROL = "prefScreenParentalControl";
+    private static final String PREF_SCREEN_PLUGINS = "prefScreenPlugins";
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -125,6 +125,12 @@ public class MainPreferencesFragment extends AnimatedPreferenceFragment {
             getParentFragmentManager().beginTransaction()
                     .replace(R.id.settingsContainer, new BugReportFragment())
                     .addToBackStack(getString(R.string.report_bug_title)).commit();
+            return true;
+        });
+        findPreference(PREF_SCREEN_PLUGINS).setOnPreferenceClickListener(preference -> {
+            getParentFragmentManager().beginTransaction()
+                    .replace(R.id.settingsContainer, new PluginsPreferencesFragment())
+                    .addToBackStack(getString(R.string.plugins_pref_title)).commit();
             return true;
         });
         findPreference(PREF_SCREEN_PARENTAL_CONTROL).setOnPreferenceClickListener(preference -> {

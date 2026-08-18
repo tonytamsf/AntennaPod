@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AntennaPod Plugin System — Architecture Overview</title>
+</head>
+<body>
+<style>
+  :root {
+    --ground: #F5F5F1;
+    --surface: #EAEAE4;
+    --card: #FFFFFF;
+    --ink: #1C1E1A;
+    --ink-secondary: #52564E;
+    --ink-muted: #8A8D85;
+    --accent: #1A7D55;
+    --accent-soft: #E4F2EB;
+    --accent-dim: #145F41;
+    --signal: #C96A2B;
+    --signal-soft: #FDF0E6;
+    --border: #D2D4CC;
+    --border-strong: #B0B3A9;
+    --code-bg: #F0F0EC;
+    --diagram-bg: #FAFAF7;
+    --pro: #1A7D55;
+    --con: #B54332;
+    --shadow-sm: 0 1px 2px rgba(28,30,26,.06);
+    --shadow-md: 0 2px 8px rgba(28,30,26,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131513;
+      --surface: #1A1C1A;
+      --card: #1F211F;
+      --ink: #E4E5E1;
+      --ink-secondary: #A8AAA4;
+      --ink-muted: #6E706A;
+      --accent: #3DB87A;
+      --accent-soft: #162A1F;
+      --accent-dim: #5FD49A;
+      --signal: #E8964F;
+      --signal-soft: #2A1F14;
+      --border: #2E302E;
+      --border-strong: #3E403E;
+      --code-bg: #1A1C1A;
+      --diagram-bg: #171917;
+      --pro: #3DB87A;
+      --con: #E87060;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.2);
+      --shadow-md: 0 2px 8px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131513;
+    --surface: #1A1C1A;
+    --card: #1F211F;
+    --ink: #E4E5E1;
+    --ink-secondary: #A8AAA4;
+    --ink-muted: #6E706A;
+    --accent: #3DB87A;
+    --accent-soft: #162A1F;
+    --accent-dim: #5FD49A;
+    --signal: #E8964F;
+    --signal-soft: #2A1F14;
+    --border: #2E302E;
+    --border-strong: #3E403E;
+    --code-bg: #1A1C1A;
+    --diagram-bg: #171917;
+    --pro: #3DB87A;
+    --con: #E87060;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.2);
+    --shadow-md: 0 2px 8px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.7 system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 48px; }
+  .header .eyebrow {
+    font: 600 .72rem/1 system-ui, sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font: 700 2rem/1.2 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    color: var(--ink);
+    text-wrap: balance;
+    margin-bottom: 10px;
+  }
+  .header .subtitle {
+    font-size: .95rem;
+    color: var(--ink-secondary);
+    max-width: 640px;
+    line-height: 1.6;
+  }
+  .header .meta {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font: 500 .72rem/1 system-ui, sans-serif;
+    letter-spacing: .03em;
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: var(--surface);
+    color: var(--ink-secondary);
+    border: 1px solid var(--border);
+  }
+  .chip.green { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .chip.orange { background: var(--signal-soft); color: var(--signal); border-color: var(--signal); }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 48px; }
+  .section-label {
+    font: 600 .68rem/1 system-ui, sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+  }
+  h2 {
+    font: 600 1.35rem/1.3 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    color: var(--ink);
+    margin-bottom: 12px;
+    text-wrap: balance;
+  }
+  h3 {
+    font: 600 1rem/1.4 system-ui, sans-serif;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  p { color: var(--ink-secondary); margin-bottom: 12px; }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Key facts ── */
+  .keyfacts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  @media (max-width: 600px) { .keyfacts { grid-template-columns: 1fr; } }
+  .keyfact {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .keyfact .kf-label {
+    font: 500 .7rem/1 system-ui, sans-serif;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+  }
+  .keyfact .kf-value {
+    font: 700 1.3rem/1.2 'Iowan Old Style', Palatino, Georgia, serif;
+    color: var(--accent);
+  }
+  .keyfact .kf-detail {
+    font-size: .8rem;
+    color: var(--ink-secondary);
+    margin-top: 4px;
+  }
+
+  /* ── Diagram ── */
+  .diagram-wrap {
+    background: var(--diagram-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 24px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .layer-stack { display: flex; flex-direction: column; gap: 0; max-width: 640px; margin: 0 auto; }
+  .layer-box {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    position: relative;
+  }
+  .layer-box.chosen {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .layer-name {
+    font: 700 .85rem/1.3 system-ui, sans-serif;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-name .badge {
+    font: 600 .6rem/1 system-ui, sans-serif;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #fff;
+  }
+  .layer-desc {
+    font-size: .8rem;
+    color: var(--ink-secondary);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .layer-arrow {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: .75rem;
+    padding: 4px 0;
+    letter-spacing: .03em;
+  }
+  .layer-arrow svg {
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* ── Code ── */
+  code {
+    font: .85em/1.4 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font: .78rem/1.6 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+    color: var(--ink);
+    margin: 12px 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* ── Cards grid ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  @media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card h3 { margin-bottom: 8px; }
+
+  /* ── Flow diagram ── */
+  .flow-container {
+    background: var(--diagram-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 20px;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-width: 720px;
+  }
+  .flow-step {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: center;
+    position: relative;
+  }
+  .flow-step.highlight {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .flow-step .fs-num {
+    font: 700 .65rem/1 system-ui, sans-serif;
+    color: var(--ink-muted);
+    letter-spacing: .04em;
+    margin-bottom: 4px;
+  }
+  .flow-step .fs-title {
+    font: 600 .78rem/1.3 system-ui, sans-serif;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .flow-step .fs-detail {
+    font-size: .7rem;
+    color: var(--ink-secondary);
+    line-height: 1.4;
+  }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 2px;
+    color: var(--ink-muted);
+    font-size: .9rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Pros/cons ── */
+  .procon { margin: 8px 0; }
+  .procon li {
+    list-style: none;
+    padding-left: 20px;
+    position: relative;
+    margin: 5px 0;
+    font-size: .88rem;
+    color: var(--ink-secondary);
+    line-height: 1.5;
+  }
+  .procon.pro li::before { content: "+"; position: absolute; left: 0; color: var(--pro); font-weight: 700; font-family: ui-monospace, monospace; }
+  .procon.con li::before { content: "−"; position: absolute; left: 2px; color: var(--con); font-weight: 700; font-family: ui-monospace, monospace; }
+  .pc-label {
+    font: 600 .65rem/1 system-ui, sans-serif;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .pc-label.pro { color: var(--pro); }
+  .pc-label.con { color: var(--con); }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 680px;
+    font-size: .82rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+    color: var(--ink-secondary);
+  }
+  th {
+    background: var(--surface);
+    font-weight: 600;
+    color: var(--ink);
+    font-size: .75rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+  }
+  td.y { color: var(--pro); font-weight: 600; }
+  td.n { color: var(--con); font-weight: 600; }
+  td.m { color: var(--ink-muted); font-weight: 600; }
+  tr.chosen-row td { background: var(--accent-soft); }
+  tr.chosen-row td:first-child { font-weight: 600; color: var(--accent); }
+
+  /* ── Callout ── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: .88rem;
+    color: var(--ink-secondary);
+  }
+  .callout strong { color: var(--ink); }
+
+  /* ── Security grid ── */
+  .sec-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+  @media (max-width: 600px) { .sec-grid { grid-template-columns: 1fr; } }
+  .sec-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .sec-item .si-icon {
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+  }
+  .sec-item .si-title {
+    font: 600 .82rem/1.3 system-ui, sans-serif;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .sec-item .si-desc {
+    font-size: .78rem;
+    color: var(--ink-secondary);
+    line-height: 1.5;
+  }
+
+  /* ── AIDL contract visual ── */
+  .contract-visual {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 16px 0;
+  }
+  @media (max-width: 600px) {
+    .contract-visual { flex-direction: column; }
+    .contract-arrow { transform: rotate(90deg); }
+  }
+  .contract-box {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .contract-box h3 { font-size: .85rem; margin-bottom: 8px; }
+  .contract-box ul {
+    list-style: none;
+    padding: 0;
+  }
+  .contract-box li {
+    font-size: .8rem;
+    color: var(--ink-secondary);
+    padding: 3px 0;
+    line-height: 1.4;
+  }
+  .contract-box li code { font-size: .78rem; }
+  .contract-arrow {
+    flex-shrink: 0;
+    padding: 0 8px;
+    color: var(--accent);
+    font-size: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .contract-arrow .ca-label {
+    font: 500 .6rem/1 system-ui, sans-serif;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  /* ── Alternatives ── */
+  .alt-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 12px 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .alt-card.is-chosen {
+    border-color: var(--accent);
+    border-width: 2px;
+    background: var(--accent-soft);
+  }
+  .alt-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .alt-card p { font-size: .88rem; }
+  .alt-procon {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  @media (max-width: 500px) { .alt-procon { grid-template-columns: 1fr; } }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: .78rem;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 48px 0;
+  }
+
+  /* ── Capability pills ── */
+  .cap-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .cap-pill {
+    font: 600 .7rem/1 'SF Mono', ui-monospace, monospace;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--ink-secondary);
+    border: 1px solid var(--border);
+  }
+  .cap-pill .bit { color: var(--ink-muted); margin-left: 4px; font-weight: 400; }
+
+  /* ── Plugin repo links ── */
+  .repo-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 16px 0;
+  }
+  @media (max-width: 500px) { .repo-links { grid-template-columns: 1fr; } }
+  .repo-link {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .15s;
+  }
+  .repo-link:hover { border-color: var(--accent); text-decoration: none; }
+  .repo-link .rl-name {
+    font: 600 .82rem/1.3 system-ui, sans-serif;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+  .repo-link .rl-desc {
+    font-size: .75rem;
+    color: var(--ink-secondary);
+    line-height: 1.4;
+  }
+</style>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="eyebrow">AntennaPod &middot; PR #14</div>
+    <h1>Plugin System Architecture</h1>
+    <p class="subtitle">Out-of-process plugin apps augment downloaded episodes with transcripts, chapter markers, and retention policies &mdash; each sandboxed in its own APK, discovered over AIDL, driven through one unchanged in-process seam.</p>
+    <div class="meta">
+      <span class="chip green">AIDL Bound Services</span>
+      <span class="chip">79 files changed</span>
+      <span class="chip">+4,769 lines</span>
+      <span class="chip orange">3 capabilities</span>
+    </div>
+  </div>
+
+  <!-- Key facts -->
+  <div class="keyfacts">
+    <div class="keyfact">
+      <div class="kf-label">Architecture</div>
+      <div class="kf-value">3 modules</div>
+      <div class="kf-detail">:plugin:api &middot; :plugin:host &middot; :app</div>
+    </div>
+    <div class="keyfact">
+      <div class="kf-label">Isolation</div>
+      <div class="kf-value">Per-process</div>
+      <div class="kf-detail">No dynamic code loading &mdash; Play-safe</div>
+    </div>
+    <div class="keyfact">
+      <div class="kf-label">Plugin Lifecycle</div>
+      <div class="kf-value">Independent</div>
+      <div class="kf-detail">Install, update, version separately</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Core idea -->
+  <div class="section">
+    <div class="section-label">Overview</div>
+    <h2>Plugins are separate Android apps</h2>
+    <p>Each plugin is its own APK, its own repo, its own process. AntennaPod discovers installed plugin apps on-device via <code>PackageManager</code> and drives them over Android's binder IPC. No plugin code ever runs inside AntennaPod's process. Plugins are <strong>disabled by default</strong> and only execute after the user toggles them on in <strong>Settings &rarr; Plugins</strong>.</p>
+    <p>Plugin-generated content &mdash; transcripts and chapter markers &mdash; flows through AntennaPod's existing transcript and chapter pipelines, so it is <strong>indistinguishable from publisher-provided content</strong>.</p>
+
+    <div class="callout">
+      <strong>Key design constraint:</strong> Google Play policy prohibits downloading and executing code that changes app behavior. This rules out any form of dynamic code loading, making out-of-process AIDL the natural choice for an on-device plugin ecosystem.
+    </div>
+  </div>
+
+  <!-- Module architecture -->
+  <div class="section">
+    <div class="section-label">Module Architecture</div>
+    <h2>Three modules, one seam</h2>
+    <p>The download pipeline knows nothing about plugins, AIDL, or binders. It only calls <code>MediaProcessorRegistry.runAll()</code> against a list of <code>DownloadedMediaProcessor</code> implementations. Everything cross-process lives behind that one interface.</p>
+
+    <div class="diagram-wrap">
+      <div class="layer-stack">
+        <div class="layer-box">
+          <div class="layer-name">:app</div>
+          <div class="layer-desc">
+            Declares <code>PLUGIN</code> permission &amp; <code>&lt;queries&gt;</code> &middot;
+            Registers discovery in <code>ClientConfigurator</code> &middot;
+            <code>PluginsPreferencesFragment</code> (enable/disable UI) &middot;
+            <code>PluginDebugOverlay</code> (floating debug view)
+          </div>
+        </div>
+        <div class="layer-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M5 11l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          depends on
+        </div>
+        <div class="layer-box chosen">
+          <div class="layer-name">
+            :plugin:host
+            <span class="badge">SDK</span>
+          </div>
+          <div class="layer-desc">
+            AIDL <code>IMediaProcessorPlugin</code> + parcelables (<code>PluginMediaRequest</code>, <code>PluginMediaResult</code>, <code>PluginChapter</code>) + <code>PluginContract</code> &middot;
+            <code>PluginManager</code> (discovery + live <code>PACKAGE_ADDED</code> re-sync) &middot;
+            <code>RemoteMediaProcessor</code> (bind &rarr; invoke &rarr; apply) &middot;
+            <code>PluginPreferences</code> &middot; <code>PluginDescriptor</code> &middot;
+            <code>EpisodeRetentionManager</code>
+          </div>
+        </div>
+        <div class="layer-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M5 11l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          depends on
+        </div>
+        <div class="layer-box">
+          <div class="layer-name">:plugin:api <span style="font-weight:400;color:var(--ink-muted);font-size:.8rem;margin-left:4px">internal seam</span></div>
+          <div class="layer-desc">
+            <code>DownloadedMediaProcessor</code> interface &middot;
+            <code>MediaProcessorRegistry</code> &middot;
+            <code>PluginDebugLog</code>
+            &mdash; depended on by <code>:net:download:service</code> (the download pipeline)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p>The seam interface is intentionally tiny:</p>
+    <pre><code>public interface DownloadedMediaProcessor {
+    String getId();
+    boolean shouldProcess(FeedMedia media);
+    void process(Context context, FeedMedia media);
+}</code></pre>
+    <p>Each discovered plugin is wrapped in a <code>RemoteMediaProcessor</code> (which implements this interface) and registered. This is the single integration point.</p>
+  </div>
+
+  <!-- Cross-process contract -->
+  <div class="section">
+    <div class="section-label">IPC Contract</div>
+    <h2>The cross-process AIDL interface</h2>
+
+    <pre><code>interface IMediaProcessorPlugin {
+    String getPluginId();
+    int getCapabilities();
+    PluginMediaResult process(in PluginMediaRequest request);
+}</code></pre>
+
+    <div class="contract-visual">
+      <div class="contract-box">
+        <h3>Request &rarr; Plugin</h3>
+        <p style="font-size:.78rem;color:var(--ink-muted);margin-bottom:8px"><code>PluginMediaRequest</code></p>
+        <ul>
+          <li><code>capability</code> &mdash; which single capability to run</li>
+          <li><code>mediaFd</code> &mdash; audio as a <strong>read-only</strong> <code>ParcelFileDescriptor</code></li>
+          <li><code>mimeType</code> &middot; <code>episodeTitle</code> &middot; <code>durationMs</code></li>
+        </ul>
+      </div>
+      <div class="contract-arrow">
+        <span class="ca-label">binder IPC</span>
+        &harr;
+      </div>
+      <div class="contract-box">
+        <h3>Result &larr; Plugin</h3>
+        <p style="font-size:.78rem;color:var(--ink-muted);margin-bottom:8px"><code>PluginMediaResult</code></p>
+        <ul>
+          <li><code>success</code> &middot; <code>resultType</code> (NONE / TRANSCRIPT / CHAPTERS)</li>
+          <li><code>content</code> + <code>contentMimeType</code> (transcript text)</li>
+          <li><code>chapters</code> &mdash; list of <code>PluginChapter</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <p style="font-size:.85rem;color:var(--ink-secondary)">Passing a file descriptor &mdash; not the bytes &mdash; sidesteps the ~1 MB binder transaction limit and grants access to exactly one file. The plugin never sees AntennaPod's database or private storage.</p>
+
+    <h3 style="margin-top:20px">Capabilities</h3>
+    <p>Advertised as a bitmask in <code>&lt;meta-data&gt;</code> on each plugin's manifest service entry:</p>
+    <div class="cap-row">
+      <span class="cap-pill">TRANSCRIPTION <span class="bit">0x1</span></span>
+      <span class="cap-pill">CHAPTERS <span class="bit">0x2</span></span>
+      <span class="cap-pill">EPISODE_RETENTION <span class="bit">separate AIDL</span></span>
+    </div>
+    <p>The host only invokes capabilities the episode is <strong>missing</strong> &mdash; if it already has a transcript, the transcription capability is skipped.</p>
+  </div>
+
+  <!-- End-to-end flow -->
+  <div class="section">
+    <div class="section-label">Data Flow</div>
+    <h2>End-to-end: download to content</h2>
+
+    <div class="callout">
+      Plugins run <strong>when an episode finishes downloading</strong> &mdash; not at app launch. At launch, only discovery and registration happen.
+    </div>
+
+    <div class="flow-container">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="fs-num">1</div>
+          <div class="fs-title">Download completes</div>
+          <div class="fs-detail">MediaDownloadedHandler fires</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="fs-num">2</div>
+          <div class="fs-title">Registry.runAll()</div>
+          <div class="fs-detail">Iterates registered processors</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step highlight">
+          <div class="fs-num">3</div>
+          <div class="fs-title">shouldProcess?</div>
+          <div class="fs-detail">Enabled? Local audio? Content missing?</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step highlight">
+          <div class="fs-num">4</div>
+          <div class="fs-title">bindService</div>
+          <div class="fs-detail">BIND_AUTO_CREATE, 15s timeout</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step highlight">
+          <div class="fs-num">5</div>
+          <div class="fs-title">IPC process()</div>
+          <div class="fs-detail">Audio passed as read-only FD</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="fs-num">6</div>
+          <div class="fs-title">Apply result</div>
+          <div class="fs-detail">Transcript &rarr; TranscriptUtils &middot; Chapters &rarr; setChapters</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+          <div class="fs-num">7</div>
+          <div class="fs-title">Persist</div>
+          <div class="fs-detail">DBWriter.setFeedItem &middot; unbindService</div>
+        </div>
+      </div>
+    </div>
+
+    <p><code>shouldProcess()</code> gates work three ways: the plugin must be <strong>enabled</strong>, the media must be <strong>local audio</strong>, and the episode must be <strong>missing</strong> the content the plugin would provide.</p>
+  </div>
+
+  <!-- Discovery -->
+  <div class="section">
+    <div class="section-label">Discovery</div>
+    <h2>How plugins are found</h2>
+    <p><code>PluginManager.discover()</code> uses <code>PackageManager.queryIntentServices()</code> to find every service responding to the action <code>de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR</code>. Each service's <code>&lt;meta-data&gt;</code> declares a plugin ID and capability bitmask.</p>
+
+    <p>A <code>BroadcastReceiver</code> on <code>PACKAGE_ADDED</code> / <code>REMOVED</code> / <code>REPLACED</code> re-syncs the registry live &mdash; installing or removing a plugin app takes effect <strong>without restarting AntennaPod</strong>.</p>
+
+    <h3 style="margin-top:16px">Plugin manifest declaration</h3>
+    <pre><code>&lt;service
+    android:name=".TranscriptionPluginService"
+    android:exported="true"
+    android:permission="de.danoeh.antennapod.permission.PLUGIN"&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR"/&gt;
+    &lt;/intent-filter&gt;
+    &lt;meta-data android:name="de.danoeh.antennapod.plugin.ID"
+               android:value="sample-transcription"/&gt;
+    &lt;meta-data android:name="de.danoeh.antennapod.plugin.CAPABILITIES"
+               android:value="3"/&gt;  &lt;!-- TRANSCRIPTION | CHAPTERS --&gt;
+&lt;/service&gt;</code></pre>
+  </div>
+
+  <!-- Security -->
+  <div class="section">
+    <div class="section-label">Security</div>
+    <h2>Isolation &amp; trust model</h2>
+
+    <div class="sec-grid">
+      <div class="sec-item">
+        <div class="si-icon">&#x1f512;</div>
+        <div class="si-title">Process isolation</div>
+        <div class="si-desc">Plugin runs in its own process. A crash or hang cannot take down the podcast player &mdash; binding uses a 15-second timeout.</div>
+      </div>
+      <div class="sec-item">
+        <div class="si-icon">&#x1f6e1;</div>
+        <div class="si-title">No dynamic code loading</div>
+        <div class="si-desc">AntennaPod never loads plugin code. It sends a binder message. Fully Google Play policy compliant.</div>
+      </div>
+      <div class="sec-item">
+        <div class="si-icon">&#x1f4c1;</div>
+        <div class="si-title">Least-privilege data</div>
+        <div class="si-desc">Plugin receives one read-only file descriptor &mdash; never AntennaPod's database, preferences, or private storage.</div>
+      </div>
+      <div class="sec-item">
+        <div class="si-icon">&#x1f511;</div>
+        <div class="si-title">Custom permission</div>
+        <div class="si-desc"><code>de.danoeh.antennapod.permission.PLUGIN</code> with <code>protectionLevel="normal"</code> gates who may bind.</div>
+      </div>
+      <div class="sec-item">
+        <div class="si-icon">&#x2705;</div>
+        <div class="si-title">Explicit opt-in</div>
+        <div class="si-desc">Disabled by default. Each plugin must be individually enabled by the user in Settings &rarr; Plugins.</div>
+      </div>
+      <div class="sec-item">
+        <div class="si-icon">&#x1f50d;</div>
+        <div class="si-title">Auditable output</div>
+        <div class="si-desc">Results flow through the same transcript/chapter code paths as normal content, with no special privileges.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debug tooling -->
+  <div class="section">
+    <div class="section-label">Observability</div>
+    <h2>Debug tooling</h2>
+    <p>Because the interesting behavior happens across a process boundary on a background thread, the system ships an observability layer:</p>
+    <div class="card-grid">
+      <div class="card">
+        <h3>PluginDebugLog</h3>
+        <p style="font-size:.85rem">A live, in-memory ring buffer in <code>:plugin:api</code> that records every discovery, enablement check, bind, request, result, and apply step. Mirrored to logcat.</p>
+      </div>
+      <div class="card">
+        <h3>PluginDebugOverlay</h3>
+        <p style="font-size:.85rem">A draggable floating overlay &mdash; toggled from <strong>Settings &rarr; Plugins &rarr; Show debug overlay</strong> &mdash; that renders <code>PluginDebugLog</code> events in real time on top of the app. Color-coded by severity. Requires <code>SYSTEM_ALERT_WINDOW</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Plugin repos -->
+  <div class="section">
+    <div class="section-label">Ecosystem</div>
+    <h2>Working plugin apps</h2>
+    <p>Two plugin apps built against this contract live in their own repos and build green in CI. Sample templates are mirrored under <code>docs/</code> in the AntennaPod repo.</p>
+    <div class="repo-links">
+      <a class="repo-link" href="https://github.com/tonytamsf/antennapod-transcription-plugin" target="_blank" rel="noopener">
+        <div class="rl-name">antennapod-transcription-plugin</div>
+        <div class="rl-desc">Generates transcripts for downloaded episodes. Declares both transcription and chapters capabilities.</div>
+      </a>
+      <a class="repo-link" href="https://github.com/tonytamsf/antennapod-chapter-plugin" target="_blank" rel="noopener">
+        <div class="rl-name">antennapod-chapter-plugin</div>
+        <div class="rl-desc">Chapters-only plugin. Separate app, separate plugin ID, independent lifecycle.</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Alternatives -->
+  <div class="section">
+    <div class="section-label">Decision Record</div>
+    <h2>Alternatives considered</h2>
+
+    <div class="alt-card is-chosen">
+      <h3>A. Out-of-process AIDL bound services <span class="chip green" style="font-size:.6rem">Chosen</span></h3>
+      <p>Plugins are separate apps; the host binds their service and drives it over binder IPC.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>Strong process &amp; permission isolation</li>
+            <li>No dynamic code loading &mdash; Play compliant</li>
+            <li>Independent install/update per plugin</li>
+            <li>Large data via FD, not marshalled bytes</li>
+            <li>Explicit capability negotiation</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li>AIDL + parcelable boilerplate</li>
+            <li>IPC overhead &amp; binding timeout to manage</li>
+            <li>User installs each plugin as a full app</li>
+            <li><code>&lt;queries&gt;</code> needed on Android 11+</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-card">
+      <h3>B. In-process dynamic code loading</h3>
+      <p>Load plugin classes into AntennaPod's own process via <code>DexClassLoader</code>.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>Fastest &mdash; no IPC, direct object calls</li>
+            <li>Trivial data passing</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li><strong>Violates Google Play policy</strong></li>
+            <li>Plugin inherits all app permissions &amp; data</li>
+            <li>A plugin crash crashes the whole app</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-card">
+      <h3>C. Cloud / REST web service</h3>
+      <p>Upload audio to a remote server that returns transcripts/chapters.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>Heavy ML models run server-side</li>
+            <li>Cross-platform, centrally updated</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li><strong>Sends user audio to a third party</strong></li>
+            <li>Against AntennaPod's FOSS/privacy ethos</li>
+            <li>Requires network + money</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-card">
+      <h3>D. Broadcast / implicit-Intent</h3>
+      <p>Broadcast an intent describing the media; plugins reply via another intent.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>Very loose coupling</li>
+            <li>Familiar Android primitive</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li>No synchronous request/response</li>
+            <li>Modern background-execution limits</li>
+            <li>Awkward large-data handoff</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-card">
+      <h3>E. ContentProvider-based</h3>
+      <p>Each plugin exposes a <code>ContentProvider</code>; host queries it and reads results via <code>openFile</code>.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>Standard IPC with permission model</li>
+            <li>Process isolation</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li>CRUD semantics fit "process &amp; return" poorly</li>
+            <li>Capability discovery must be bolted on</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-card">
+      <h3>F. Embedded scripting / WASM sandbox</h3>
+      <p>Plugins are scripts interpreted by a sandbox inside the app.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>No separate app to install</li>
+            <li>Portable, hot-loadable</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li>Grey area vs Play's dynamic-code rules</li>
+            <li>Must build &amp; secure a whole runtime</li>
+            <li>Hard to reach native audio/ML libraries</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alt-card">
+      <h3>G. Compile-time bundled Gradle modules</h3>
+      <p>Each "plugin" is a module compiled into the AntennaPod APK.</p>
+      <div class="alt-procon">
+        <div>
+          <div class="pc-label pro">Strengths</div>
+          <ul class="procon pro">
+            <li>Simplest possible; fully trusted</li>
+            <li>No IPC, no discovery</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pc-label con">Trade-offs</div>
+          <ul class="procon con">
+            <li>Not a third-party ecosystem</li>
+            <li>Bloats the app; no independent updates</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison matrix -->
+  <div class="section">
+    <div class="section-label">Comparison</div>
+    <h2>Decision matrix</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Approach</th>
+            <th>Play-safe</th>
+            <th>Process isolation</th>
+            <th>On-device privacy</th>
+            <th>Independent updates</th>
+            <th>Request/response fit</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="chosen-row">
+            <td>A. AIDL bound services</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Native</td>
+            <td class="m">Medium</td>
+          </tr>
+          <tr>
+            <td>B. Dynamic code loading</td>
+            <td class="n">No</td>
+            <td class="n">No</td>
+            <td class="y">Yes</td>
+            <td class="m">Partial</td>
+            <td class="y">Native</td>
+            <td class="y">Low</td>
+          </tr>
+          <tr>
+            <td>C. Cloud REST</td>
+            <td class="y">Yes</td>
+            <td class="y">N/A</td>
+            <td class="n">No</td>
+            <td class="y">Yes</td>
+            <td class="y">Good</td>
+            <td class="m">Medium</td>
+          </tr>
+          <tr>
+            <td>D. Broadcast / Intent</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="n">Poor</td>
+            <td class="y">Low</td>
+          </tr>
+          <tr>
+            <td>E. ContentProvider</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="m">Awkward</td>
+            <td class="m">Medium</td>
+          </tr>
+          <tr>
+            <td>F. Scripting / WASM</td>
+            <td class="m">Grey area</td>
+            <td class="m">Sandbox</td>
+            <td class="y">Yes</td>
+            <td class="y">Yes</td>
+            <td class="y">Good</td>
+            <td class="n">High</td>
+          </tr>
+          <tr>
+            <td>G. Bundled modules</td>
+            <td class="y">Yes</td>
+            <td class="n">No</td>
+            <td class="y">Yes</td>
+            <td class="n">No</td>
+            <td class="y">Native</td>
+            <td class="y">Low</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Why AIDL won -->
+  <div class="section">
+    <div class="section-label">Rationale</div>
+    <h2>Why AIDL bound services won</h2>
+    <p>Two constraints are truly non-negotiable: <strong>Google Play compliance</strong> and <strong>user privacy</strong>. These immediately eliminate dynamic code loading (B) and a default cloud service (C).</p>
+    <p>Of the remaining Play-safe, on-device, isolated options:</p>
+    <ul style="padding-left:20px;margin:8px 0;color:var(--ink-secondary);font-size:.9rem;line-height:1.7">
+      <li><strong>Broadcasts (D)</strong> give no clean way to return a result and fight modern background limits.</li>
+      <li><strong>ContentProviders (E)</strong> force request/response into CRUD queries.</li>
+      <li><strong>Scripting/WASM (F)</strong> is a large, security-sensitive engineering project for no additional benefit.</li>
+      <li><strong>Bundled modules (G)</strong> are trivial but are not a third-party ecosystem at all.</li>
+    </ul>
+    <p><strong>AIDL (A)</strong> is the one option satisfying every hard constraint <em>and</em> modeling the interaction natively: a typed <code>process(request) &rarr; result</code> call, real process isolation, a file-descriptor handoff that respects the binder size limit, and plugins that ship as ordinary Android apps. The cost &mdash; AIDL boilerplate and a bound-service lifecycle &mdash; is modest and fully contained behind the one-method <code>DownloadedMediaProcessor</code> seam.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Episode retention extension -->
+  <div class="section">
+    <div class="section-label">Extension</div>
+    <h2>Episode retention: a second plugin capability</h2>
+    <p>Beyond media processing, the system extends to a second AIDL contract for episode retention (AntennaPod issue #2077). A retention plugin implements <code>IEpisodeRetentionPlugin</code> with a <code>selectForDeletion()</code> method.</p>
+    <p><code>EpisodeRetentionManager</code> discovers retention plugin services, groups a feed's downloaded episodes, asks the enabled plugin which to delete, and deletes them with hard host-side guards: <strong>only downloaded, non-favorite, non-queued, non-local episodes</strong> can be removed.</p>
+    <p>Retention runs after auto-download via <code>AutoDownloadManagerImpl</code>, using the same disabled-by-default, per-plugin-enablement model.</p>
+  </div>
+
+  <!-- Key files -->
+  <div class="section">
+    <div class="section-label">Reference</div>
+    <h2>Key files at a glance</h2>
+    <div class="table-wrap">
+      <table style="min-width:520px">
+        <thead>
+          <tr><th>Module</th><th>File</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>:plugin:api</code></td><td><code>DownloadedMediaProcessor.java</code></td><td>The seam interface</td></tr>
+          <tr><td><code>:plugin:api</code></td><td><code>MediaProcessorRegistry.java</code></td><td>Static registry + runAll()</td></tr>
+          <tr><td><code>:plugin:api</code></td><td><code>PluginDebugLog.java</code></td><td>In-memory event log</td></tr>
+          <tr><td><code>:plugin:host</code></td><td><code>IMediaProcessorPlugin.aidl</code></td><td>AIDL contract</td></tr>
+          <tr><td><code>:plugin:host</code></td><td><code>PluginManager.java</code></td><td>Discovery + live re-sync</td></tr>
+          <tr><td><code>:plugin:host</code></td><td><code>RemoteMediaProcessor.java</code></td><td>Bind &rarr; invoke &rarr; apply</td></tr>
+          <tr><td><code>:plugin:host</code></td><td><code>PluginPreferences.java</code></td><td>Per-plugin enablement</td></tr>
+          <tr><td><code>:plugin:host</code></td><td><code>EpisodeRetentionManager.java</code></td><td>Retention plugin host</td></tr>
+          <tr><td><code>:plugin:host</code></td><td><code>PluginContract.java</code></td><td>Actions, capabilities, constants</td></tr>
+          <tr><td><code>:app</code></td><td><code>PluginsPreferencesFragment.java</code></td><td>Settings UI</td></tr>
+          <tr><td><code>:app</code></td><td><code>PluginDebugOverlay.java</code></td><td>Floating debug view</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    Architecture overview for <a href="https://github.com/tonytamsf/AntennaPod/pull/14" target="_blank" rel="noopener">AntennaPod PR #14</a>. See module <code>README.md</code> files under <code>plugin/api/</code> and <code>plugin/host/</code>, and the sample plugin templates under <code>docs/</code>, for implementation detail.
+  </div>
+
+</div>
+</body>
+</html>

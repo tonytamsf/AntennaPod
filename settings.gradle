@@ -37,6 +37,9 @@ include ':parser:feed'
 include ':parser:media'
 include ':parser:transcript'
 
+include ':plugin:api'
+include ':plugin:host'
+
 include ':playback:base'
 include ':playback:cast'
 include ':playback:service'

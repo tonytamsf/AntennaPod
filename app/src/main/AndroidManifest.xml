@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <supports-screens
         android:anyDensity="true"
@@ -26,6 +27,18 @@
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false"/>
+
+    <permission
+        android:name="de.danoeh.antennapod.permission.PLUGIN"
+        android:label="@string/plugin_permission_label"
+        android:protectionLevel="normal"/>
+    <uses-permission android:name="de.danoeh.antennapod.permission.PLUGIN"/>
+
+    <queries>
+        <intent>
+            <action android:name="de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR"/>
+        </intent>
+    </queries>
 
     <application
         android:name="de.danoeh.antennapod.PodcastApp"

@@ -12,8 +12,8 @@ android {
         // Version code schema:
         // "1.2.3-beta4"    -> 1020304
         // "1.2.3"          -> 1020395
-        versionCode 3120095
-        versionName "3.12.0"
+        versionCode 3120001
+        versionName "3.12.0-beta1"
     }
 
     signingConfigs {
@@ -60,6 +60,8 @@ dependencies {
     implementation project(':net:discovery')
     implementation project(':net:download:service-interface')
     implementation project(':net:download:service')
+    implementation project(':plugin:api')
+    implementation project(':plugin:host')
     implementation project(':net:ssl')
     implementation project(':net:sync:service')
     playImplementation project(':net:sync:wear-interface')
@@ -98,7 +100,6 @@ dependencies {
     implementation libs.androidx.palette
     implementation libs.androidx.preference
     implementation libs.androidx.recyclerview
-    implementation libs.androidx.transition
     implementation libs.androidx.viewpager2
     implementation libs.androidx.work.runtime
     implementation libs.google.material
@@ -133,8 +134,6 @@ dependencies {
     androidTestImplementation libs.androidx.test.runner
     androidTestImplementation libs.androidx.test.rules
     androidTestImplementation libs.androidx.test.ext.junit
-    androidTestImplementation libs.hamcrest
-    androidTestImplementation libs.hamcrest.library
 }
 
 if (project.hasProperty("antennaPodPlayPublisherCredentials")) {
