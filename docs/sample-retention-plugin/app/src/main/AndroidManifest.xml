@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="de.danoeh.antennapod.permission.PLUGIN"/>
+
+    <application
+        android:allowBackup="true"
+        android:label="AntennaPod Retention Plugin">
+
+        <activity
+            android:name=".RetentionSettingsActivity"
+            android:exported="true"
+            android:label="AntennaPod Retention Plugin">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".RetentionPluginService"
+            android:exported="true"
+            android:permission="de.danoeh.antennapod.permission.PLUGIN">
+            <intent-filter>
+                <action android:name="de.danoeh.antennapod.plugin.action.EPISODE_RETENTION"/>
+            </intent-filter>
+            <meta-data
+                android:name="de.danoeh.antennapod.plugin.ID"
+                android:value="keep-newest-episodes"/>
+            <meta-data
+                android:name="de.danoeh.antennapod.plugin.CAPABILITIES"
+                android:value="4"/>
+        </service>
+
+        <service
+            android:name=".FeedContentPluginService"
+            android:exported="true"
+            android:permission="de.danoeh.antennapod.permission.PLUGIN">
+            <intent-filter>
+                <action android:name="de.danoeh.antennapod.plugin.action.FEED_CONTENT"/>
+            </intent-filter>
+            <meta-data
+                android:name="de.danoeh.antennapod.plugin.ID"
+                android:value="keep-newest-episodes"/>
+            <meta-data
+                android:name="de.danoeh.antennapod.plugin.CAPABILITIES"
+                android:value="8"/>
+        </service>
+    </application>
+</manifest>

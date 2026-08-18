@@ -9,6 +9,10 @@ import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.util.Log;
 import de.danoeh.antennapod.plugin.api.DownloadedMediaProcessor;
+import de.danoeh.antennapod.plugin.api.EpisodeRetentionPolicy;
+import de.danoeh.antennapod.plugin.api.EpisodeRetentionRegistry;
+import de.danoeh.antennapod.plugin.api.FeedContentProcessor;
+import de.danoeh.antennapod.plugin.api.FeedContentRegistry;
 import de.danoeh.antennapod.plugin.api.MediaProcessorRegistry;
 import de.danoeh.antennapod.plugin.api.PluginDebugLog;
 
@@ -26,12 +30,45 @@ public final class PluginManager {
     }
 
     public static List<PluginDescriptor> discover(Context context) {
+        return discover(context, PluginContract.ACTION_MEDIA_PROCESSOR);
+    }
+
+    public static List<PluginDescriptor> discoverRetentionPlugins(Context context) {
+        return discover(context, PluginContract.ACTION_EPISODE_RETENTION);
+    }
+
+    public static List<PluginDescriptor> discoverFeedContentPlugins(Context context) {
+        return discover(context, PluginContract.ACTION_FEED_CONTENT);
+    }
+
+    /**
+     * All plugins the user can enable, no matter which extension point they implement.
+     */
+    public static List<PluginDescriptor> discoverAll(Context context) {
+        List<PluginDescriptor> result = new ArrayList<>(discover(context));
+        Set<String> knownIds = new HashSet<>();
+        for (PluginDescriptor descriptor : result) {
+            knownIds.add(descriptor.getId());
+        }
+        for (PluginDescriptor descriptor : discoverRetentionPlugins(context)) {
+            if (knownIds.add(descriptor.getId())) {
+                result.add(descriptor);
+            }
+        }
+        for (PluginDescriptor descriptor : discoverFeedContentPlugins(context)) {
+            if (knownIds.add(descriptor.getId())) {
+                result.add(descriptor);
+            }
+        }
+        return result;
+    }
+
+    private static List<PluginDescriptor> discover(Context context, String action) {
         List<PluginDescriptor> result = new ArrayList<>();
         PackageManager packageManager = context.getPackageManager();
-        Intent intent = new Intent(PluginContract.ACTION_MEDIA_PROCESSOR);
+        Intent intent = new Intent(action);
         List<ResolveInfo> services = packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA);
-        PluginDebugLog.info(TAG, "Discovery: " + services.size() + " service(s) responded to "
-                + PluginContract.ACTION_MEDIA_PROCESSOR);
+        PluginDebugLog.info(TAG, "Discovery: " + services.size() + " service(s) responded to " + action);
         for (ResolveInfo info : services) {
             ServiceInfo service = info.serviceInfo;
             if (service == null || service.metaData == null) {
@@ -52,8 +89,8 @@ public final class PluginManager {
             result.add(new PluginDescriptor(id, label, service.packageName, service.name, capabilities));
         }
         if (result.isEmpty()) {
-            PluginDebugLog.warn(TAG, "No plugins discovered. Confirm the plugin app is installed and exposes a "
-                    + "service with the MEDIA_PROCESSOR intent filter and plugin meta-data.");
+            PluginDebugLog.warn(TAG, "No plugins discovered for " + action + ". Confirm the plugin app is "
+                    + "installed and exposes a service with that intent filter and plugin meta-data.");
         }
         return result;
     }
@@ -82,8 +119,46 @@ public final class PluginManager {
                 MediaProcessorRegistry.unregister(processor.getId());
             }
         }
+
+        Set<String> discoveredRetentionIds = new HashSet<>();
+        for (PluginDescriptor descriptor : discoverRetentionPlugins(appContext)) {
+            discoveredRetentionIds.add(REMOTE_ID_PREFIX + descriptor.getId());
+            Log.d(TAG, "Registering retention plugin '" + descriptor.getId() + "' from "
+                    + descriptor.getPackageName());
+            PluginDebugLog.info(TAG, "Registering retention plugin '" + descriptor.getId() + "' from "
+                    + descriptor.getPackageName()
+                    + " (enabled=" + PluginPreferences.isEnabled(descriptor.getId()) + ")");
+            EpisodeRetentionRegistry.register(new RemoteEpisodeRetentionPolicy(appContext, descriptor));
+        }
+        for (EpisodeRetentionPolicy policy : EpisodeRetentionRegistry.getPolicies()) {
+            if (policy.getId().startsWith(REMOTE_ID_PREFIX) && !discoveredRetentionIds.contains(policy.getId())) {
+                Log.d(TAG, "Unregistering removed retention plugin " + policy.getId());
+                PluginDebugLog.info(TAG, "Unregistering removed retention plugin " + policy.getId());
+                EpisodeRetentionRegistry.unregister(policy.getId());
+            }
+        }
+        Set<String> discoveredFeedContentIds = new HashSet<>();
+        for (PluginDescriptor descriptor : discoverFeedContentPlugins(appContext)) {
+            discoveredFeedContentIds.add(REMOTE_ID_PREFIX + descriptor.getId());
+            Log.d(TAG, "Registering feed content plugin '" + descriptor.getId() + "' from "
+                    + descriptor.getPackageName());
+            PluginDebugLog.info(TAG, "Registering feed content plugin '" + descriptor.getId() + "' from "
+                    + descriptor.getPackageName()
+                    + " (enabled=" + PluginPreferences.isEnabled(descriptor.getId()) + ")");
+            FeedContentRegistry.register(new RemoteFeedContentProcessor(appContext, descriptor));
+        }
+        for (FeedContentProcessor processor : FeedContentRegistry.getProcessors()) {
+            if (processor.getId().startsWith(REMOTE_ID_PREFIX)
+                    && !discoveredFeedContentIds.contains(processor.getId())) {
+                Log.d(TAG, "Unregistering removed feed content plugin " + processor.getId());
+                PluginDebugLog.info(TAG, "Unregistering removed feed content plugin " + processor.getId());
+                FeedContentRegistry.unregister(processor.getId());
+            }
+        }
         PluginDebugLog.debug(TAG, "Registry now holds " + MediaProcessorRegistry.getProcessors().size()
-                + " processor(s)");
+                + " processor(s), " + EpisodeRetentionRegistry.getPolicies().size()
+                + " retention policy/policies and " + FeedContentRegistry.getProcessors().size()
+                + " feed content processor(s)");
     }
 
     private static synchronized void registerPackageMonitor(Context appContext) {

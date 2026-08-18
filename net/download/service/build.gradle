@@ -1,9 +1,9 @@
 plugins {
     alias(libs.plugins.android.library)
+    id("java-test-fixtures")
 }
 apply from: "../../../common.gradle"
 apply from: "../../../playFlavor.gradle"
-apply from: "../../../mockitoAgent.gradle"
 
 android {
     namespace "de.danoeh.antennapod.net.download.service"
@@ -15,6 +15,7 @@ dependencies {
     implementation project(':net:common')
     implementation project(':net:download:service-interface')
     implementation project(':net:sync:service-interface')
+    implementation project(':plugin:api')
     implementation project(':parser:media')
     implementation project(':parser:feed')
     implementation project(':storage:database')

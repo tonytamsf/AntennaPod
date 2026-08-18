@@ -24,6 +24,7 @@ import de.danoeh.antennapod.model.download.DownloadError;
 import de.danoeh.antennapod.model.feed.FeedItem;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.net.sync.serviceinterface.EpisodeAction;
+import de.danoeh.antennapod.plugin.api.MediaProcessorRegistry;
 import de.danoeh.antennapod.ui.transcript.TranscriptUtils;
 
 /**
@@ -115,6 +116,8 @@ public class MediaDownloadedHandler implements Runnable {
                         .currentTimestamp()
                         .build());
         }
+
+        MediaProcessorRegistry.runAll(context, media);
     }
 
     @NonNull

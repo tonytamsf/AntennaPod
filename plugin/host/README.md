@@ -14,7 +14,17 @@ The contract that both AntennaPod and every plugin app compile against lives her
   passed as a **read-only `ParcelFileDescriptor`** over the binder, so no file sharing, `content://`
   URIs, or storage permissions are involved. The result carries generated content (e.g. a transcript)
   and its MIME type.
-- `PluginContract` — the well-known action, permission name, metadata keys, and capability/result flags.
+- `aidl/.../IEpisodeRetentionPlugin.aidl` — the bound-service interface of the retention extension
+  point: `getPluginId()`, `getCapabilities()`, and `selectForDeletion(PluginRetentionRequest)`.
+- `PluginRetentionRequest` / `PluginRetentionResult` / `PluginEpisodeInfo` — the Parcelables for that
+  call. The request describes one feed and the downloaded episodes AntennaPod considers deletable; the
+  result carries the ids of the episodes that may be deleted.
+- `aidl/.../IFeedContentPlugin.aidl` — the bound-service interface of the feed content extension point:
+  `getPluginId()`, `getCapabilities()`, and `processFeed(PluginFeedContentRequest)`.
+- `PluginFeedContentRequest` / `PluginFeedContentResult` — the Parcelables for that call. The request
+  carries the feed id and url plus **two `ParcelFileDescriptor`s**: the downloaded document read-only,
+  and a file to write a rewritten document to. The result says whether anything was rewritten.
+- `PluginContract` — the well-known actions, permission name, metadata keys, and capability/result flags.
 
 In a real deployment this package would be published as a small "plugin SDK" artifact that plugin repos
 depend on. The sample plugin (`docs/sample-plugin/`) copies these files for illustration.
@@ -23,8 +33,11 @@ depend on. The sample plugin (`docs/sample-plugin/`) copies these files for illu
 
 `PluginManager.discover(context)` queries `PackageManager.queryIntentServices` for services declaring
 the `ACTION_MEDIA_PROCESSOR` action, reading each plugin's id and capabilities from its service
-`<meta-data>`. Android 11+ package visibility requires the matching `<queries>` entry in the host
-manifest (declared in `:app`).
+`<meta-data>`. `discoverRetentionPlugins(context)` and `discoverFeedContentPlugins(context)` do the same
+for `ACTION_EPISODE_RETENTION` and `ACTION_FEED_CONTENT`, and `discoverAll(context)` returns all three
+deduplicated by plugin id (that is what the settings screen lists). One app may expose several of these
+services under a single plugin id, so the user enables it once. Android 11+ package visibility requires
+the matching `<queries>` entries in the host manifest (declared in `:app`).
 
 ## Bridge to the download pipeline
 
@@ -52,12 +65,32 @@ For each applicable episode, `RemoteMediaProcessor`:
 - For a curated first-party ecosystem the permission could be raised to `signature` so only co-signed
   plugins bind.
 
+## Bridge to the cleanup pipeline
+
+`RemoteEpisodeRetentionPolicy` is the same idea for the `EpisodeRetentionPolicy` extension point of
+`:plugin:api`. During automatic cleanup, `PluginRetentionCleanup` asks the registry per feed which
+downloaded episodes may be deleted; the remote policy binds the plugin's `ACTION_EPISODE_RETENTION`
+service, sends the feed and its deletable episodes, and maps the returned episode ids back to
+`FeedItem`s. Ids that were not part of the request are ignored, so a plugin cannot reach beyond the
+episodes it was offered. This is how per-podcast rules like "keep the newest N episodes" are
+implemented outside the app.
+
+## Bridge to the feed update pipeline
+
+`RemoteFeedContentProcessor` implements the `FeedContentProcessor` extension point of `:plugin:api`.
+After a feed is downloaded and before `FeedParserTask` reads it, it binds the plugin's
+`ACTION_FEED_CONTENT` service, passes the downloaded document as a read-only `ParcelFileDescriptor`
+plus a second descriptor for the plugin's output, and replaces the downloaded file only if the plugin
+reports it rewrote one. The replacement is rejected unless the output is non-empty and starts with `<`,
+so a broken plugin cannot make a subscription unparseable. This is what lets a plugin cut a feed down
+to the newest N items: the removed items are never parsed, so AntennaPod never sees them.
+
 ## Capabilities
 
-Plugins declare a capability bitmask (`CAPABILITY_TRANSCRIPTION`, `CAPABILITY_CHAPTERS`). For each
-download, `RemoteMediaProcessor` requests every capability the plugin supports that the episode still
-needs, one binder call each, and applies the results: transcripts via `TranscriptUtils.storeTranscript`
-and chapters via `item.setChapters` + `DBWriter.setFeedItem`.
+Plugins declare a capability bitmask (`CAPABILITY_TRANSCRIPTION`, `CAPABILITY_CHAPTERS`,
+`CAPABILITY_EPISODE_RETENTION`, `CAPABILITY_FEED_CONTENT`). For each download, `RemoteMediaProcessor` requests every capability the
+plugin supports that the episode still needs, one binder call each, and applies the results: transcripts
+via `TranscriptUtils.storeTranscript` and chapters via `item.setChapters` + `DBWriter.setFeedItem`.
 
 ## Live discovery
 

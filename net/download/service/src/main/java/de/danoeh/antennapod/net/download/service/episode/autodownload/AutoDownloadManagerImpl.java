@@ -50,6 +50,7 @@ public class AutoDownloadManagerImpl extends AutoDownloadManager {
      * @param context Used for accessing the DB.
      */
     public void performAutoCleanup(final Context context) {
+        PluginRetentionCleanup.performCleanup(context);
         EpisodeCleanupAlgorithmFactory.build().performCleanup(context);
     }
 }
