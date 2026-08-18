@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="de.danoeh.antennapod.permission.PLUGIN"/>
+
+    <application
+        android:allowBackup="true"
+        android:label="AntennaPod Transcription Plugin">
+
+        <service
+            android:name=".TranscriptionPluginService"
+            android:exported="true"
+            android:permission="de.danoeh.antennapod.permission.PLUGIN">
+            <intent-filter>
+                <action android:name="de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR"/>
+            </intent-filter>
+            <meta-data
+                android:name="de.danoeh.antennapod.plugin.ID"
+                android:value="sample-transcription"/>
+            <meta-data
+                android:name="de.danoeh.antennapod.plugin.CAPABILITIES"
+                android:value="3"/>
+        </service>
+    </application>
+</manifest>

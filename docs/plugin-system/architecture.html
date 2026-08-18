@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AntennaPod Plugin System — Architecture</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1b1f;
+    --muted: #5c5c66;
+    --border: #e2e2ea;
+    --card: #f7f7fb;
+    --accent: #2f6f4f;
+    --accent-fg: #ffffff;
+    --code-bg: #f0f0f5;
+    --pro: #1f7a4d;
+    --con: #b23c3c;
+    --chosen-bg: #e7f4ec;
+    --chosen-border: #2f6f4f;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a;
+      --fg: #e8e8ec;
+      --muted: #a0a0aa;
+      --border: #2d2d35;
+      --card: #1e1e24;
+      --accent: #4caf80;
+      --accent-fg: #0c0c0e;
+      --code-bg: #232329;
+      --pro: #5fd598;
+      --con: #ff8f8f;
+      --chosen-bg: #17281f;
+      --chosen-border: #4caf80;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  h1 { font-size: 2rem; margin: 0 0 8px; line-height: 1.2; }
+  h2 {
+    font-size: 1.4rem;
+    margin: 48px 0 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  h3 { font-size: 1.1rem; margin: 28px 0 8px; }
+  p, li { color: var(--fg); }
+  .sub { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  .tag {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-fg); vertical-align: middle;
+  }
+  code, pre { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: .88em; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: .82rem; line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+
+  .toc {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin: 0 0 8px;
+  }
+  .toc ol { margin: 6px 0 0; padding-left: 20px; }
+  .toc li { margin: 2px 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; margin: 16px 0; box-shadow: var(--shadow);
+  }
+  .card.chosen { background: var(--chosen-bg); border-color: var(--chosen-border); border-width: 2px; }
+  .card h3 { margin-top: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
+
+  ul.pros, ul.cons { list-style: none; padding-left: 0; margin: 8px 0; }
+  ul.pros li, ul.cons li { padding-left: 22px; position: relative; margin: 5px 0; }
+  ul.pros li::before { content: "＋"; position: absolute; left: 0; color: var(--pro); font-weight: 700; }
+  ul.cons li::before { content: "−"; position: absolute; left: 0; color: var(--con); font-weight: 700; }
+  .prohead { color: var(--pro); font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  .conhead { color: var(--con); font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+
+  .table-scroll { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: .9rem; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--card); }
+  td.y { color: var(--pro); font-weight: 600; }
+  td.n { color: var(--con); font-weight: 600; }
+  td.m { color: var(--muted); font-weight: 600; }
+
+  .diagram {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin: 16px 0; overflow-x: auto;
+  }
+  .layer { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 8px 0; background: var(--bg); }
+  .layer .name { font-weight: 700; }
+  .layer .mods { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  .arrow { text-align: center; color: var(--muted); font-size: 1.1rem; margin: 2px 0; }
+
+  .callout {
+    border-left: 4px solid var(--accent); background: var(--card);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;
+  }
+  footer.page { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="sub"><span class="tag">AntennaPod</span> &nbsp;Plugin System</p>
+  <h1>Plugin System Architecture</h1>
+  <p class="sub">How out-of-process plugin apps augment downloaded episodes with transcripts and chapters — the chosen design, the alternatives that were weighed against it, and their trade-offs.</p>
+</header>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">What the plugin system does</a></li>
+    <li><a href="#goals">Design goals &amp; constraints</a></li>
+    <li><a href="#current">The current implementation (chosen)</a></li>
+    <li><a href="#contract">The cross-process contract</a></li>
+    <li><a href="#flow">End-to-end flow</a></li>
+    <li><a href="#security">Security &amp; isolation model</a></li>
+    <li><a href="#debug">Debug tooling</a></li>
+    <li><a href="#alternatives">Alternative architectures considered</a></li>
+    <li><a href="#matrix">Comparison matrix</a></li>
+    <li><a href="#decision">Why AIDL bound services won</a></li>
+  </ol>
+</nav>
+
+<h2 id="overview">1. What the plugin system does</h2>
+<p>
+  AntennaPod can be extended by <strong>plugins that are separate Android apps</strong> — each with its own
+  APK, its own repository, and its own process. After an episode finishes downloading, AntennaPod hands the
+  audio to any enabled plugin, which can return <strong>a transcript</strong> or <strong>chapter markers</strong>.
+  The result is applied through AntennaPod's existing transcript/chapter pipelines, so plugin-generated content
+  is indistinguishable from publisher-provided content.
+</p>
+<p>
+  Crucially, <strong>no plugin code ever runs inside AntennaPod's process</strong>. Plugins are discovered on the
+  device and driven over Android's binder IPC. They are <strong>disabled by default</strong> and only run after
+  the user enables them in <em>Settings → Plugins</em>.
+</p>
+
+<h2 id="goals">2. Design goals &amp; constraints</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>Hard constraints</h3>
+    <ul>
+      <li><strong>Google Play policy.</strong> Apps may not download and execute code that changes app behaviour. This rules out any form of dynamic code loading.</li>
+      <li><strong>Privacy.</strong> AntennaPod is FOSS and privacy-first. Uploading users' audio to a cloud service by default is unacceptable.</li>
+      <li><strong>Stability.</strong> A misbehaving third-party plugin must not be able to crash the podcast player.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Desirable properties</h3>
+    <ul>
+      <li><strong>Independent lifecycle.</strong> Plugins should install, update, and version on their own, without an AntennaPod release.</li>
+      <li><strong>Least privilege.</strong> A plugin should see only the one audio file it is asked to process — never AntennaPod's database or private files.</li>
+      <li><strong>Small, stable seam.</strong> The existing download pipeline should call plugins through a single unchanged in-process interface.</li>
+      <li><strong>Capability negotiation.</strong> A plugin advertises what it can do; the host only asks for what is missing.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="current">3. The current implementation <span class="tag">chosen</span></h2>
+<p>
+  Plugins are implemented as <strong>out-of-process AIDL bound services</strong>. Three Gradle modules divide the
+  responsibility:
+</p>
+
+<div class="diagram">
+  <div class="layer">
+    <div class="name">:app</div>
+    <div class="mods">Declares the <code>PLUGIN</code> permission &amp; <code>&lt;queries&gt;</code> entry · registers discovery in <code>ClientConfigurator</code> · <code>PluginsPreferencesFragment</code> (enable/disable) · <code>PluginDebugOverlay</code></div>
+  </div>
+  <div class="arrow">▲ depends on</div>
+  <div class="layer">
+    <div class="name">:plugin:host &nbsp;<span class="muted">— the plugin SDK</span></div>
+    <div class="mods">AIDL <code>IMediaProcessorPlugin</code> + <code>PluginMediaRequest</code>/<code>PluginMediaResult</code>/<code>PluginChapter</code> parcelables + <code>PluginContract</code> · <code>PluginManager</code> (discovery + live re-sync) · <code>RemoteMediaProcessor</code> (bind, invoke, apply) · <code>PluginPreferences</code> · <code>PluginDescriptor</code></div>
+  </div>
+  <div class="arrow">▲ depends on</div>
+  <div class="layer">
+    <div class="name">:plugin:api &nbsp;<span class="muted">— the internal seam</span></div>
+    <div class="mods"><code>DownloadedMediaProcessor</code> interface · <code>MediaProcessorRegistry</code> · <code>PluginDebugLog</code> &nbsp;— depended on by the download pipeline (<code>:net:download:service</code>)</div>
+  </div>
+</div>
+
+<p>
+  The seam is deliberately tiny. The download pipeline knows nothing about plugins, AIDL, or binders — it only
+  calls <code>MediaProcessorRegistry.runAll()</code> against the <code>DownloadedMediaProcessor</code> interface:
+</p>
+<pre><code>public interface DownloadedMediaProcessor {
+    String getId();
+    boolean shouldProcess(FeedMedia media);
+    void process(Context context, FeedMedia media);
+}</code></pre>
+<p>
+  Each discovered plugin is wrapped in a <code>RemoteMediaProcessor</code> (which implements that interface) and
+  registered. This is the single in-process integration point; everything cross-process lives behind it.
+</p>
+
+<h3>Discovery</h3>
+<p>
+  <code>PluginManager.discover()</code> asks <code>PackageManager.queryIntentServices()</code> for every service
+  that responds to the action <code>de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR</code>, reading each
+  service's <code>&lt;meta-data&gt;</code> for a plugin ID and a capability bitmask. A <code>BroadcastReceiver</code>
+  on <code>PACKAGE_ADDED/REMOVED/REPLACED</code> re-syncs the registry live, so installing a plugin makes it
+  appear without restarting AntennaPod. On Android 11+ a <code>&lt;queries&gt;</code> element is required for the
+  host to even see plugin packages.
+</p>
+
+<h2 id="contract">4. The cross-process contract</h2>
+<p>The AIDL interface is intentionally minimal:</p>
+<pre><code>interface IMediaProcessorPlugin {
+    String getPluginId();
+    int getCapabilities();
+    PluginMediaResult process(in PluginMediaRequest request);
+}</code></pre>
+
+<div class="grid2">
+  <div class="card">
+    <h3>Request → plugin</h3>
+    <p><code>PluginMediaRequest</code> carries:</p>
+    <ul>
+      <li><code>capability</code> — which single capability to run</li>
+      <li><code>mediaFd</code> — the audio as a <strong>read-only <code>ParcelFileDescriptor</code></strong></li>
+      <li><code>mimeType</code>, <code>episodeTitle</code>, <code>durationMs</code></li>
+    </ul>
+    <p class="muted">Passing a file descriptor — not the bytes — sidesteps the ~1&nbsp;MB binder transaction limit and grants access to exactly one file.</p>
+  </div>
+  <div class="card">
+    <h3>Result ← plugin</h3>
+    <p><code>PluginMediaResult</code> carries:</p>
+    <ul>
+      <li><code>success</code>, <code>resultType</code> (<code>NONE</code>/<code>TRANSCRIPT</code>/<code>CHAPTERS</code>)</li>
+      <li><code>content</code> + <code>contentMimeType</code> (transcript)</li>
+      <li><code>chapters</code> — list of <code>PluginChapter</code> (<code>startMs</code>, <code>title</code>, <code>url</code>, <code>imageUrl</code>)</li>
+    </ul>
+    <p class="muted">Capabilities are a bitmask: <code>TRANSCRIPTION = 1</code>, <code>CHAPTERS = 1&nbsp;&lt;&lt;&nbsp;1</code>.</p>
+  </div>
+</div>
+
+<h2 id="flow">5. End-to-end flow</h2>
+<div class="callout">
+  Plugins run <strong>when an episode finishes downloading</strong> — not at app launch. At launch, only discovery
+  and registration happen.
+</div>
+<pre><code>Download completes
+   └─ MediaDownloadedHandler
+        └─ MediaProcessorRegistry.runAll(context, media)
+             └─ for each registered processor:
+                  RemoteMediaProcessor.shouldProcess(media)?   // enabled? local audio? content missing?
+                     └─ RemoteMediaProcessor.process(...)
+                          1. bindService(BIND_AUTO_CREATE)      // 15s timeout, CountDownLatch
+                          2. IMediaProcessorPlugin.process(request)   // audio passed as read-only FD
+                          3. apply result:
+                               transcript → TranscriptUtils.storeTranscript + item.setTranscriptUrl
+                               chapters   → item.setChapters
+                             → DBWriter.setFeedItem(...)         // existing pipelines
+                          4. unbindService()  (finally)</code></pre>
+<p>
+  <code>shouldProcess()</code> gates work three ways: the plugin must be <strong>enabled</strong>, the media must be
+  <strong>local audio</strong>, and the episode must actually be <strong>missing</strong> the content the plugin
+  would provide (no existing transcript / no existing chapters). Only the applicable capabilities are invoked.
+</p>
+
+<h2 id="security">6. Security &amp; isolation model</h2>
+<div class="grid2">
+  <div class="card">
+    <ul class="pros">
+      <li><strong>Process isolation</strong> — a plugin runs in its own process; a crash or hang cannot take down the player (binding uses a timeout).</li>
+      <li><strong>No dynamic code loading</strong> — AntennaPod never loads plugin code; it only sends a binder message. Play-policy compliant.</li>
+      <li><strong>Least-privilege data access</strong> — the plugin receives one read-only file descriptor, never AntennaPod's database or private storage.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <ul class="pros">
+      <li><strong>Custom permission</strong> — <code>de.danoeh.antennapod.permission.PLUGIN</code> (<code>protectionLevel="normal"</code>) gates who may bind.</li>
+      <li><strong>Explicit opt-in</strong> — plugins are disabled by default and enabled per-plugin by the user.</li>
+      <li><strong>Auditable output</strong> — results flow through the same transcript/chapter code paths as normal content, with no special privileges.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="debug">7. Debug tooling</h2>
+<p>
+  Because the interesting behaviour happens across a process boundary on a background thread, the system ships an
+  observability layer: <code>PluginDebugLog</code> (a live, in-memory ring buffer in <code>:plugin:api</code>, also
+  mirrored to logcat) records every discovery, enablement check, bind, request, result, and apply step. A
+  draggable floating <code>PluginDebugOverlay</code> — toggled from <em>Settings → Plugins → Show debug overlay</em>
+  — renders those events in real time on top of the app.
+</p>
+
+<h2 id="alternatives">8. Alternative architectures considered</h2>
+
+<div class="card chosen">
+  <h3>A. Out-of-process AIDL bound services &nbsp;<span class="tag">chosen</span></h3>
+  <p>Plugins are separate apps; the host binds their service and drives it over binder IPC. <em>(Described in detail above.)</em></p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>Strong process &amp; permission isolation</li>
+        <li>No dynamic code loading — Play compliant</li>
+        <li>Independent install/update per plugin</li>
+        <li>Large data via FD, not marshalled bytes</li>
+        <li>Explicit capability negotiation</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li>AIDL + parcelable boilerplate</li>
+        <li>IPC/binding overhead &amp; a timeout to manage</li>
+        <li>User must install each plugin as a full app</li>
+        <li>Package-visibility (<code>&lt;queries&gt;</code>) needed on Android 11+</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>B. In-process dynamic code loading (<code>DexClassLoader</code> / plugin JARs)</h3>
+  <p>Load plugin classes into AntennaPod's own process and call them directly.</p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>Fastest — no IPC, direct object calls</li>
+        <li>Trivial data passing (shared references)</li>
+        <li>Single process, single install</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li><strong>Violates Google Play policy</strong> on executable code</li>
+        <li>Plugin inherits <em>all</em> of AntennaPod's permissions &amp; data</li>
+        <li>A plugin crash crashes the whole app</li>
+        <li>No sandbox; serious supply-chain risk</li>
+        <li>ABI/versioning fragility</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>C. Cloud / REST web service</h3>
+  <p>Upload the audio to a remote server that returns transcripts/chapters.</p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>Heavy ML models run server-side</li>
+        <li>No on-device compute or model shipping</li>
+        <li>Logic updated centrally, cross-platform</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li><strong>Privacy</strong> — sends user audio to a third party</li>
+        <li>Requires network, bandwidth, and money</li>
+        <li>No offline support; added latency</li>
+        <li>Against AntennaPod's FOSS/privacy ethos</li>
+        <li>Not really an on-device "plugin" ecosystem</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>D. Broadcast / implicit-Intent (fire-and-forget)</h3>
+  <p>Broadcast an intent describing the media; plugins reply via another intent.</p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>Very loose coupling, minimal contract</li>
+        <li>Familiar Android primitive</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li>No natural synchronous request/response</li>
+        <li>Modern background-execution &amp; implicit-broadcast limits</li>
+        <li>Awkward, insecure large-data handoff</li>
+        <li>No clean capability negotiation or lifecycle</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>E. ContentProvider-based</h3>
+  <p>Each plugin exposes a <code>ContentProvider</code>; the host queries it and reads results via <code>openFile</code>.</p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>Standard IPC with a permission model</li>
+        <li>Streaming via <code>openFile</code></li>
+        <li>Process isolation like the chosen design</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li>CRUD semantics fit "process &amp; return" poorly</li>
+        <li>No natural "run this, then call back" model</li>
+        <li>Capability discovery must be bolted on</li>
+        <li>More ceremony for the same isolation AIDL already gives</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>F. Embedded scripting / WASM sandbox</h3>
+  <p>Plugins are scripts (JS/Lua/WASM) interpreted by a sandbox inside the app.</p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>No separate app to install</li>
+        <li>Portable, hot-loadable plugin scripts</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li>Grey area vs. Play's dynamic-code rules</li>
+        <li>Must build &amp; secure a whole runtime/sandbox</li>
+        <li>Hard to reach native audio/ML libraries</li>
+        <li>Large engineering effort for little gain here</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>G. Compile-time bundled Gradle modules</h3>
+  <p>Each "plugin" is a module compiled into the AntennaPod APK — the pattern AntennaPod already uses for features.</p>
+  <div class="grid2">
+    <div>
+      <div class="prohead">Pros</div>
+      <ul class="pros">
+        <li>Simplest possible; fully trusted, type-safe</li>
+        <li>No IPC, no discovery, no permissions</li>
+      </ul>
+    </div>
+    <div>
+      <div class="conhead">Cons</div>
+      <ul class="cons">
+        <li>Not a third-party ecosystem — every plugin must be merged &amp; shipped</li>
+        <li>Bloats the app; no independent updates</li>
+        <li>Not user-installable; gated on AntennaPod releases</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2 id="matrix">9. Comparison matrix</h2>
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr>
+      <th>Approach</th>
+      <th>Play-policy safe</th>
+      <th>Process isolation</th>
+      <th>Privacy (on-device)</th>
+      <th>Independent updates</th>
+      <th>Request/response fit</th>
+      <th>Implementation cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>A. AIDL bound services</strong> <span class="tag">chosen</span></td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Native</td>
+      <td class="m">Medium</td>
+    </tr>
+    <tr>
+      <td>B. Dynamic code loading</td>
+      <td class="n">No</td>
+      <td class="n">No</td>
+      <td class="y">Yes</td>
+      <td class="m">Partial</td>
+      <td class="y">Native</td>
+      <td class="y">Low</td>
+    </tr>
+    <tr>
+      <td>C. Cloud REST service</td>
+      <td class="y">Yes</td>
+      <td class="y">N/A</td>
+      <td class="n">No</td>
+      <td class="y">Yes</td>
+      <td class="y">Good</td>
+      <td class="m">Medium</td>
+    </tr>
+    <tr>
+      <td>D. Broadcast / Intent</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="n">Poor</td>
+      <td class="y">Low</td>
+    </tr>
+    <tr>
+      <td>E. ContentProvider</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="m">Awkward</td>
+      <td class="m">Medium</td>
+    </tr>
+    <tr>
+      <td>F. Scripting / WASM</td>
+      <td class="m">Grey area</td>
+      <td class="m">Sandbox</td>
+      <td class="y">Yes</td>
+      <td class="y">Yes</td>
+      <td class="y">Good</td>
+      <td class="n">High</td>
+    </tr>
+    <tr>
+      <td>G. Bundled modules</td>
+      <td class="y">Yes</td>
+      <td class="n">No</td>
+      <td class="y">Yes</td>
+      <td class="n">No</td>
+      <td class="y">Native</td>
+      <td class="y">Low</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="decision">10. Why AIDL bound services won</h2>
+<p>
+  Only two constraints are truly non-negotiable for AntennaPod: <strong>Google Play compliance</strong> and
+  <strong>user privacy</strong>. Those immediately eliminate dynamic code loading (B) and a default cloud service (C).
+  Of the remaining Play-safe, on-device, isolated options, the differentiator is <em>fit for a synchronous
+  "process this file and return structured data" interaction</em>:
+</p>
+<ul>
+  <li>Broadcasts (D) give no clean way to return a result and fight modern background limits.</li>
+  <li>ContentProviders (E) force request/response into CRUD queries.</li>
+  <li>A scripting/WASM sandbox (F) is a large, security-sensitive engineering project for no additional benefit here.</li>
+  <li>Bundled modules (G) are trivial but are not a third-party, independently-updatable ecosystem at all.</li>
+</ul>
+<p>
+  <strong>AIDL bound services (A)</strong> are the one option that satisfies every hard constraint <em>and</em>
+  models the interaction natively: a typed <code>process(request) → result</code> call, real process isolation, a
+  file-descriptor handoff that respects the binder size limit and grants least-privilege access, and plugins that
+  ship and update as ordinary Android apps. The cost — some AIDL boilerplate and a bound-service lifecycle to
+  manage — is modest and fully contained behind the one-method <code>DownloadedMediaProcessor</code> seam.
+</p>
+
+<footer class="page">
+  Living document for the AntennaPod plugin system (PR&nbsp;#14). See the module <code>README.md</code> files under
+  <code>plugin/api/</code> and <code>plugin/host/</code>, and the sample plugin templates under <code>docs/</code>,
+  for implementation detail.
+</footer>
+
+</div>
+</body>
+</html>
