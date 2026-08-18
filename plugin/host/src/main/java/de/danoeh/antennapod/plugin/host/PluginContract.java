@@ -8,9 +8,11 @@ public final class PluginContract {
 
     public static final int CAPABILITY_TRANSCRIPTION = 1;
     public static final int CAPABILITY_CHAPTERS = 1 << 1;
+    public static final int CAPABILITY_AD_CHAPTERS = 1 << 2;
     public static final int RESULT_TYPE_NONE = 0;
     public static final int RESULT_TYPE_TRANSCRIPT = 1;
     public static final int RESULT_TYPE_CHAPTERS = 2;
+    public static final int RESULT_TYPE_AD_CHAPTERS = 3;
 
     private PluginContract() {
     }
