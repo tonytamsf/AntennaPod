@@ -12,7 +12,6 @@ import de.danoeh.antennapod.plugin.host.PluginDescriptor;
 import de.danoeh.antennapod.plugin.host.PluginManager;
 import de.danoeh.antennapod.plugin.host.PluginPreferences;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PluginsPreferencesFragment extends PreferenceFragmentCompat {
@@ -24,7 +23,7 @@ public class PluginsPreferencesFragment extends PreferenceFragmentCompat {
 
         addDebugOverlayPreference(screen);
 
-        List<PluginDescriptor> plugins = new ArrayList<>(PluginManager.discover(requireContext()));
+        List<PluginDescriptor> plugins = PluginManager.discoverAll(requireContext());
         if (plugins.isEmpty()) {
             Preference empty = new Preference(requireContext());
             empty.setTitle(R.string.plugins_none_installed_title);

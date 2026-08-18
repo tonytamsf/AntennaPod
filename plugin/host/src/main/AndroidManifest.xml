@@ -5,5 +5,11 @@
         <intent>
             <action android:name="de.danoeh.antennapod.plugin.action.MEDIA_PROCESSOR"/>
         </intent>
+        <intent>
+            <action android:name="de.danoeh.antennapod.plugin.action.EPISODE_RETENTION"/>
+        </intent>
+        <intent>
+            <action android:name="de.danoeh.antennapod.plugin.action.FEED_CONTENT"/>
+        </intent>
     </queries>
 </manifest>

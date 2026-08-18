@@ -36,9 +36,11 @@ import de.danoeh.antennapod.model.download.DownloadRequest;
 
 import de.danoeh.antennapod.net.download.serviceinterface.DownloadRequestBuilder;
 import de.danoeh.antennapod.parser.feed.FeedHandlerResult;
+import de.danoeh.antennapod.plugin.api.FeedContentRegistry;
 import de.danoeh.antennapod.storage.database.NonSubscribedFeedsCleaner;
 import de.danoeh.antennapod.storage.preferences.UserPreferences;
 import de.danoeh.antennapod.ui.notifications.NotificationUtils;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -229,6 +231,9 @@ public class FeedUpdateWorker extends Worker {
             DBWriter.addDownloadStatus(downloader.getResult());
             return null;
         }
+
+        FeedContentRegistry.runAll(getApplicationContext(), request.getFeedfileId(),
+                request.getSource(), new File(request.getDestination()));
 
         FeedParserTask parserTask = new FeedParserTask(request);
         FeedHandlerResult feedHandlerResult = parserTask.call();

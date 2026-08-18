@@ -3,7 +3,6 @@ package de.danoeh.antennapod.plugin.host;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
@@ -24,8 +23,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 public class RemoteMediaProcessor implements DownloadedMediaProcessor {
     private static final String TAG = "RemoteMediaProcessor";
@@ -216,27 +213,5 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         Log.d(TAG, "Applied " + chapters.size() + " chapters from plugin " + descriptor.getId());
         PluginDebugLog.info(TAG, "Applied " + chapters.size() + " chapters from plugin '"
                 + descriptor.getId() + "'");
-    }
-
-    private static class BlockingServiceConnection implements ServiceConnection {
-        private final CountDownLatch latch = new CountDownLatch(1);
-        private volatile IBinder binder;
-
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            binder = service;
-            latch.countDown();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            binder = null;
-        }
-
-        @Nullable
-        IBinder awaitBinder(long timeoutMs) throws InterruptedException {
-            latch.await(timeoutMs, TimeUnit.MILLISECONDS);
-            return binder;
-        }
     }
 }
