@@ -16,6 +16,7 @@ import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.model.playback.MediaType;
 import de.danoeh.antennapod.plugin.api.DownloadedMediaProcessor;
 import de.danoeh.antennapod.plugin.api.PluginDebugLog;
+import de.danoeh.antennapod.storage.database.DBReader;
 import de.danoeh.antennapod.storage.database.DBWriter;
 import de.danoeh.antennapod.ui.transcript.TranscriptUtils;
 import org.apache.commons.io.IOUtils;
@@ -23,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -30,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 public class RemoteMediaProcessor implements DownloadedMediaProcessor {
     private static final String TAG = "RemoteMediaProcessor";
     private static final long BIND_TIMEOUT_MS = 15000;
+    private static final long AD_CHAPTER_TOLERANCE_MS = 1000;
 
     private final Context appContext;
     private final PluginDescriptor descriptor;
@@ -129,6 +132,8 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
                     + " length=" + (content == null ? 0 : content.length());
         } else if (result.getResultType() == PluginContract.RESULT_TYPE_CHAPTERS) {
             return "chapters count=" + result.getChapters().size();
+        } else if (result.getResultType() == PluginContract.RESULT_TYPE_AD_CHAPTERS) {
+            return "ad chapters count=" + result.getChapters().size();
         }
         return "resultType=" + result.getResultType();
     }
@@ -147,6 +152,9 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
                 && (item.getChapters() == null || item.getChapters().isEmpty())
                 && item.getPodcastIndexChapterUrl() == null) {
             capabilities.add(PluginContract.CAPABILITY_CHAPTERS);
+        }
+        if (descriptor.hasCapability(PluginContract.CAPABILITY_AD_CHAPTERS)) {
+            capabilities.add(PluginContract.CAPABILITY_AD_CHAPTERS);
         }
         return capabilities;
     }
@@ -176,6 +184,8 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
             applyTranscript(media, result);
         } else if (result.getResultType() == PluginContract.RESULT_TYPE_CHAPTERS) {
             applyChapters(media, result);
+        } else if (result.getResultType() == PluginContract.RESULT_TYPE_AD_CHAPTERS) {
+            applyAdChapters(media, result);
         }
     }
 
@@ -216,6 +226,52 @@ public class RemoteMediaProcessor implements DownloadedMediaProcessor {
         Log.d(TAG, "Applied " + chapters.size() + " chapters from plugin " + descriptor.getId());
         PluginDebugLog.info(TAG, "Applied " + chapters.size() + " chapters from plugin '"
                 + descriptor.getId() + "'");
+    }
+
+    private void applyAdChapters(FeedMedia media, PluginMediaResult result) {
+        FeedItem item = media.getItem();
+        if (item == null || result.getChapters().isEmpty()) {
+            PluginDebugLog.warn(TAG, "Ignoring ad chapters from '" + descriptor.getId()
+                    + "': missing item or empty chapter list");
+            return;
+        }
+        List<Chapter> existing = item.getChapters();
+        if (existing == null && item.hasChapters()) {
+            existing = DBReader.loadChaptersOfFeedItem(item);
+        }
+        List<Chapter> merged = new ArrayList<>();
+        if (existing != null) {
+            merged.addAll(existing);
+        }
+        int inserted = 0;
+        for (PluginChapter chapter : result.getChapters()) {
+            if (StringUtils.isEmpty(chapter.getTitle()) || hasChapterNear(merged, chapter.getStartMs())) {
+                continue;
+            }
+            merged.add(new Chapter(chapter.getStartMs(), chapter.getTitle(),
+                    chapter.getUrl(), chapter.getImageUrl()));
+            inserted++;
+        }
+        if (inserted == 0) {
+            PluginDebugLog.info(TAG, "Plugin '" + descriptor.getId()
+                    + "' returned no ad chapters that are not already present");
+            return;
+        }
+        Collections.sort(merged, (first, second) -> Long.compare(first.getStart(), second.getStart()));
+        item.setChapters(merged);
+        DBWriter.setFeedItem(item, false);
+        Log.d(TAG, "Inserted " + inserted + " ad chapters from plugin " + descriptor.getId());
+        PluginDebugLog.info(TAG, "Inserted " + inserted + " ad chapter marker(s) from plugin '"
+                + descriptor.getId() + "' into " + merged.size() + " total chapters");
+    }
+
+    private static boolean hasChapterNear(List<Chapter> chapters, long startMs) {
+        for (Chapter chapter : chapters) {
+            if (Math.abs(chapter.getStart() - startMs) < AD_CHAPTER_TOLERANCE_MS) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static class BlockingServiceConnection implements ServiceConnection {

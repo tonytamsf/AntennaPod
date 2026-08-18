@@ -58,10 +58,12 @@ For each applicable episode, `RemoteMediaProcessor`:
 
 ## Capabilities
 
-Plugins declare a capability bitmask (`CAPABILITY_TRANSCRIPTION`, `CAPABILITY_CHAPTERS`). For each
-download, `RemoteMediaProcessor` requests every capability the plugin supports that the episode still
-needs, one binder call each, and applies the results: transcripts via `TranscriptUtils.storeTranscript`
-and chapters via `item.setChapters` + `DBWriter.setFeedItem`.
+Plugins declare a capability bitmask (`CAPABILITY_TRANSCRIPTION`, `CAPABILITY_CHAPTERS`,
+`CAPABILITY_AD_CHAPTERS`). For each download, `RemoteMediaProcessor` requests every capability the
+plugin supports that the episode still needs, one binder call each, and applies the results:
+transcripts via `TranscriptUtils.storeTranscript`, chapters via `item.setChapters` +
+`DBWriter.setFeedItem`, and ad-chapter markers via a merge-and-dedup strategy that inserts ad markers
+into existing chapter lists without duplicating near-identical timestamps (1s tolerance).
 
 ## Live discovery
 
