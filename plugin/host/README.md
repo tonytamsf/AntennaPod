@@ -1,5 +1,9 @@
 # :plugin:host
 
+Design docs: [architecture](../../docs/plugin-system/architecture.html) (how the system works) and
+[extension roadmap](../../docs/plugin-system/extension-roadmap.html) (which upstream feature requests should
+become plugins, and which entry points they need).
+
 Host-side machinery for **out-of-process plugins**: plugins are separate Android apps (their own APKs,
 their own repos) that AntennaPod discovers on the device and talks to over Android IPC. There is no
 dynamic code loading — the plugin runs in its own process, sandboxed by the OS.
