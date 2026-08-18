@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AntennaPod Plugin System — Extension Roadmap</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1b1f;
+    --muted: #5c5c66;
+    --border: #e2e2ea;
+    --card: #f7f7fb;
+    --accent: #2f6f4f;
+    --accent-fg: #ffffff;
+    --code-bg: #f0f0f5;
+    --pro: #1f7a4d;
+    --con: #b23c3c;
+    --warn: #8a6d1f;
+    --chosen-bg: #e7f4ec;
+    --chosen-border: #2f6f4f;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a;
+      --fg: #e8e8ec;
+      --muted: #a0a0aa;
+      --border: #2d2d35;
+      --card: #1e1e24;
+      --accent: #4caf80;
+      --accent-fg: #0c0c0e;
+      --code-bg: #232329;
+      --pro: #5fd598;
+      --con: #ff8f8f;
+      --warn: #e0c268;
+      --chosen-bg: #17281f;
+      --chosen-border: #4caf80;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  h1 { font-size: 2rem; margin: 0 0 8px; line-height: 1.2; }
+  h2 {
+    font-size: 1.4rem;
+    margin: 48px 0 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  h3 { font-size: 1.1rem; margin: 28px 0 8px; }
+  h4 { font-size: .95rem; margin: 18px 0 6px; }
+  p, li { color: var(--fg); }
+  .sub { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  .tag {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-fg); vertical-align: middle;
+  }
+  code, pre { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: .88em; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: .82rem; line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+
+  .toc {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin: 0 0 8px;
+  }
+  .toc ol { margin: 6px 0 0; padding-left: 20px; }
+  .toc li { margin: 2px 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; margin: 16px 0; box-shadow: var(--shadow);
+  }
+  .card.chosen { background: var(--chosen-bg); border-color: var(--chosen-border); border-width: 2px; }
+  .card h3 { margin-top: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
+
+  ul.pros, ul.cons { list-style: none; padding-left: 0; margin: 8px 0; }
+  ul.pros li, ul.cons li { padding-left: 22px; position: relative; margin: 5px 0; }
+  ul.pros li::before { content: "＋"; position: absolute; left: 0; color: var(--pro); font-weight: 700; }
+  ul.cons li::before { content: "−"; position: absolute; left: 0; color: var(--con); font-weight: 700; }
+  .prohead { color: var(--pro); font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  .conhead { color: var(--con); font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+
+  .table-scroll { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 700px; font-size: .88rem; }
+  th, td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--card); position: sticky; top: 0; }
+  td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .verdict {
+    display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .03em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid var(--border);
+  }
+  .verdict.plugin { background: var(--chosen-bg); border-color: var(--chosen-border); color: var(--pro); }
+  .verdict.hybrid { background: transparent; color: var(--warn); border-color: var(--warn); }
+  .verdict.core { background: transparent; color: var(--muted); }
+
+  .callout {
+    border-left: 4px solid var(--accent); background: var(--card);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;
+  }
+  .callout.warn { border-left-color: var(--warn); }
+  .ep { border-left: 4px solid var(--accent); }
+  .ep .meta { color: var(--muted); font-size: .85rem; margin: 0 0 10px; }
+  ol.phases > li { margin: 10px 0; }
+  footer.page { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="sub"><span class="tag">AntennaPod</span> &nbsp;Plugin System</p>
+  <h1>Extension Roadmap</h1>
+  <p class="sub">
+    Which long-standing upstream feature requests the out-of-process plugin architecture should absorb,
+    which plugin entry points have to exist before that is possible, and which plugins should be written
+    against them.
+  </p>
+</header>
+
+<div class="callout">
+  <strong>Companion document.</strong> This builds on
+  <a href="architecture.html">Plugin System Architecture</a>, which describes the design as shipped in
+  <a href="https://github.com/tonytamsf/AntennaPod/pull/14">PR&nbsp;#14</a>: plugins are separate Android apps,
+  discovered via <code>PackageManager</code>, driven over an AIDL bound service, disabled by default, and
+  wired into the download pipeline through <code>MediaProcessorRegistry</code>. That document answers
+  <em>how</em> plugins work. This one answers <em>what they should be used for next</em>.
+</div>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#method">Method &amp; issue snapshot</a></li>
+    <li><a href="#headline">Headline recommendation</a></li>
+    <li><a href="#triage">Triage of the 40 oldest and 40 most-discussed requests</a></li>
+    <li><a href="#gap">What PR&nbsp;#14 covers, and where it stops</a></li>
+    <li><a href="#entrypoints">Proposed entry points (E0–E8)</a></li>
+    <li><a href="#plugins">Proposed plugins (P1–P9)</a></li>
+    <li><a href="#nongoals">What must stay in core</a></li>
+    <li><a href="#sequencing">Sequencing</a></li>
+  </ol>
+</nav>
+
+<h2 id="method">1. Method &amp; issue snapshot</h2>
+<p>
+  The candidate set is every <strong>open</strong> issue in
+  <a href="https://github.com/AntennaPod/AntennaPod">AntennaPod/AntennaPod</a> labelled
+  <code>Type: Feature request</code>, taken twice: the <strong>40 most-commented</strong> and the
+  <strong>40 oldest</strong>. The two lists overlap by 19 issues, giving <strong>61 distinct requests</strong>.
+  Snapshot taken <strong>2026-07-31</strong>; comment counts drift, so treat them as a ranking signal, not a
+  fact about today.
+</p>
+<p>Each request was given one of three verdicts:</p>
+<ul>
+  <li>
+    <span class="verdict plugin">Plugin</span> — the feature can live almost entirely in a plugin app.
+    Core's job is to add an entry point and get out of the way. These are typically features that were
+    <em>declined or stalled on scope grounds</em>, need a dependency core does not want, or serve a
+    minority of users at a cost the whole user base would otherwise pay.
+  </li>
+  <li>
+    <span class="verdict hybrid">Hybrid</span> — the <em>data</em> can come from a plugin, but the
+    <em>application and UI</em> must stay in core. Splitting it this way is what makes the feature
+    affordable; keeping both halves in a plugin would fragment behaviour.
+  </li>
+  <li>
+    <span class="verdict core">Core</span> — a plugin API does not help. Usually because the request is a
+    policy/UX decision over data structures core owns (queue, inbox, auto-download), or a UI change.
+    Adding an extension point here would export a design argument to third parties rather than settle it.
+  </li>
+</ul>
+<p>
+  <strong>14 of 61</strong> requests came out as Plugin or Hybrid. That ratio matters: the plugin system is
+  not a way to clear the backlog. It is a way to unblock the specific requests that are stuck precisely
+  <em>because</em> they do not belong in the core APK.
+</p>
+
+<h2 id="headline">2. Headline recommendation</h2>
+
+<div class="card chosen">
+  <h3>
+    <a href="https://github.com/AntennaPod/AntennaPod/issues/4159">#4159</a> — Introduce SponsorBlock to allow blocking/skipping audio ads
+    &nbsp;<span class="tag">flagship</span>
+  </h3>
+  <p class="meta muted">Opened 2020-05-16 · 20 comments · labelled <code>Needs: Decision</code></p>
+  <p>
+    This is the request the plugin architecture is most clearly the answer to, for one reason above all:
+    <strong>it has already been rejected once on scope grounds.</strong> Its predecessor
+    (<a href="https://github.com/AntennaPod/AntennaPod/issues/3382">#3382</a>) was declined because running an
+    ad-detection service is not something AntennaPod wants to own. #4159 tried to route around that by
+    proposing an existing third-party database — which trades a maintenance objection for a
+    <strong>privacy</strong> objection, since matching episodes against a remote service means telling that
+    service what the user listens to. Six years later it is still labelled <code>Needs: Decision</code>.
+  </p>
+  <p>Every horn of that dilemma is dissolved by putting it in a plugin app:</p>
+  <ul class="pros">
+    <li><strong>Nobody is asked to own it.</strong> The database integration, its terms, and its uptime live in a repo that is not AntennaPod's.</li>
+    <li><strong>The privacy objection becomes an install-time choice.</strong> Core makes no network call; a user who never installs the plugin has no new exposure, and the default for everyone else is off.</li>
+    <li><strong>The decision stops being binary.</strong> Maintainers can ship the entry point without endorsing any particular segment database — including community, offline, or on-device detectors.</li>
+    <li><strong>It fits the existing shape.</strong> "Analyse an episode, return structured time-coded data, apply it through an existing pipeline" is exactly what PR&nbsp;#14 already does for chapters.</li>
+  </ul>
+  <p>
+    It also pays for itself twice: the segment model it needs is the same one
+    <a href="https://github.com/AntennaPod/AntennaPod/issues/5924">#5924</a> (mark chapters for skipping)
+    needs for <em>user-marked</em> segments. Build it once, and the plugin and the user are two sources
+    feeding one feature.
+  </p>
+  <p class="muted">Required: <a href="#e1">E1 (segment provider)</a>, ideally with <a href="#e3">E3 (metadata-time trigger)</a> and <a href="#e0">E0 (async results)</a>. Delivered by <a href="#p1">P1</a>.</p>
+</div>
+
+<div class="card">
+  <h3>Runner-up: <a href="https://github.com/AntennaPod/AntennaPod/issues/4671">#4671</a> — Support for <code>podcast:value</code></h3>
+  <p class="meta muted">Opened 2020-11-08 · 32 comments · labelled <code>Needs: Decision</code>, <code>Area: Podcast Index / Podcasting 2.0</code></p>
+  <p>
+    Value-for-value payments require AntennaPod to become a Lightning wallet — the issue itself lists
+    "wallet functionality" and "set up a Lightning Node" as prerequisites and concedes "it's BIG". A
+    podcast player should not ship a cryptocurrency wallet, hold user funds, or take on the store-policy
+    and key-custody surface that comes with one; a plugin app can do all three without implicating the
+    core APK, and users who do not want it never install it. Ranked second only because it needs more new
+    contract surface than #4159 (<a href="#e7">E7</a> + <a href="#e8">E8</a>), and because core must first
+    stop discarding the <code>podcast:value</code> tag at parse time.
+  </p>
+</div>
+
+<h2 id="triage">3. Triage of the 40 oldest and 40 most-discussed requests</h2>
+<p class="muted">
+  Sorted by issue number. "In" marks which of the two lists an issue came from: <em>C</em> = top 40 by
+  comments, <em>O</em> = 40 oldest, <em>CO</em> = both.
+</p>
+
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr>
+      <th>#</th><th>In</th><th class="num">Opened</th><th class="num">Comments</th><th>Title</th><th>Verdict</th><th>Entry point</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="num">149</td><td>O</td><td class="num">2013-03</td><td class="num">7</td><td>Choosing a data folder should ask for moving existing data</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">307</td><td>CO</td><td class="num">2013-10</td><td class="num">15</td><td>Automatic / Smart queues</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">445</td><td>O</td><td class="num">2014-06</td><td class="num">6</td><td>D-Pad navigation inconsistent</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">475</td><td>O</td><td class="num">2014-07</td><td class="num">6</td><td>Automatic adjustment of update interval (smart refresh)</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">531</td><td>O</td><td class="num">2014-10</td><td class="num">8</td><td>Filter episodes by title</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">746</td><td>O</td><td class="num">2015-04</td><td class="num">10</td><td>Add "Delayed Delete" to the "Auto Delete" feature</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">833</td><td>O</td><td class="num">2015-05</td><td class="num">0</td><td>Support importing OPML if the user shares an OPML link</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">1077</td><td>CO</td><td class="num">2015-08</td><td class="num">133</td><td>Option to auto download oldest episodes first</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">1533</td><td>CO</td><td class="num">2016-01</td><td class="num">22</td><td>Continuous playback if initiated from podcast screen</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">1565</td><td>O</td><td class="num">2016-01</td><td class="num">8</td><td>Introduce "Top queue item" setting for continuous playback</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">1856</td><td>O</td><td class="num">2016-04</td><td class="num">7</td><td>Automatic cleanup of old episodes without enabling automatic download</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">1899</td><td>CO</td><td class="num">2016-04</td><td class="num">27</td><td>Store list of subscriptions through Google's Auto Backup for Apps <span class="muted">(subscriptions already covered in core by <code>OpmlBackupAgent</code>; the ask that remains is settings and non-Google destinations)</span></td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e6">E6</a></td></tr>
+    <tr><td class="num">1946</td><td>CO</td><td class="num">2016-05</td><td class="num">60</td><td>Custom chapter marks / timed episode annotations</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e3">E3</a> (+ existing chapters)</td></tr>
+    <tr><td class="num">2077</td><td>CO</td><td class="num">2016-07</td><td class="num">63</td><td>Keep the newest N episodes of each subscribed podcast</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">2187</td><td>CO</td><td class="num">2016-11</td><td class="num">30</td><td>Loudness normalization (compressor/limiter)</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e2">E2</a></td></tr>
+    <tr><td class="num">2437</td><td>CO</td><td class="num">2017-10</td><td class="num">31</td><td>Allow to set priorities on podcasts</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">2540</td><td>O</td><td class="num">2018-01</td><td class="num">6</td><td>Allow episode to be played while downloading is in progress</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">2601</td><td>O</td><td class="num">2018-03</td><td class="num">3</td><td>Do not charge manual downloads for episode memory</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">2648</td><td>CO</td><td class="num">2018-04</td><td class="num">87</td><td>Multiple / user definable queues</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">2920</td><td>CO</td><td class="num">2018-11</td><td class="num">24</td><td>Possibility to cast/stream to Sonos</td><td><span class="verdict plugin">Plugin</span></td><td><a href="#e5">E5</a></td></tr>
+    <tr><td class="num">3037</td><td>O</td><td class="num">2019-02</td><td class="num">10</td><td>Check downloaded file existence after import</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">3361</td><td>O</td><td class="num">2019-09</td><td class="num">0</td><td>Add setting to exclude favourite episodes from auto-deletion</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">3545</td><td>O</td><td class="num">2019-10</td><td class="num">9</td><td>QR scanner to open podcast links</td><td><span class="verdict plugin">Plugin</span></td><td><a href="#e4">E4</a></td></tr>
+    <tr><td class="num">4089</td><td>CO</td><td class="num">2020-04</td><td class="num">14</td><td>Include settings in database back-up</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e6">E6</a></td></tr>
+    <tr><td class="num">4129</td><td>O</td><td class="num">2020-05</td><td class="num">4</td><td>Allow/add swipe gestures in media/video player</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4159</td><td>CO</td><td class="num">2020-05</td><td class="num">20</td><td>Introduce SponsorBlock to allow blocking/skipping audio ads</td><td><span class="verdict plugin">Plugin</span></td><td><a href="#e1">E1</a></td></tr>
+    <tr><td class="num">4212</td><td>O</td><td class="num">2020-05</td><td class="num">5</td><td>Update chapter marks on feed update</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e3">E3</a></td></tr>
+    <tr><td class="num">4229</td><td>CO</td><td class="num">2020-06</td><td class="num">15</td><td>Tweak skip silence to make it less abrupt</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4264</td><td>O</td><td class="num">2020-06</td><td class="num">6</td><td>Wear OS app</td><td><span class="verdict core">Core</span></td><td>— <span class="muted">(companion app, not a plugin)</span></td></tr>
+    <tr><td class="num">4304</td><td>O</td><td class="num">2020-07</td><td class="num">9</td><td>Enlarge episode covers without playing episode</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4345</td><td>O</td><td class="num">2020-08</td><td class="num">11</td><td>Choosing where to queue the auto-downloaded episode</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4374</td><td>O</td><td class="num">2020-08</td><td class="num">8</td><td>When searching, (first) search only in context of the active screen</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4426</td><td>CO</td><td class="num">2020-09</td><td class="num">13</td><td>Remove episodes no longer in the RSS feed from episode lists</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4566</td><td>CO</td><td class="num">2020-10</td><td class="num">18</td><td>Minimize risk of accidental deletion of episode</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4606</td><td>O</td><td class="num">2020-10</td><td class="num">7</td><td>Separate enqueue location setting for streaming</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4671</td><td>CO</td><td class="num">2020-11</td><td class="num">32</td><td>Support for <code>podcast:value</code> tag</td><td><span class="verdict plugin">Plugin</span></td><td><a href="#e7">E7</a> + <a href="#e8">E8</a></td></tr>
+    <tr><td class="num">4747</td><td>CO</td><td class="num">2020-12</td><td class="num">14</td><td>Discovery screen enhancement</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e4">E4</a></td></tr>
+    <tr><td class="num">4825</td><td>CO</td><td class="num">2021-01</td><td class="num">18</td><td>"Shake to reset" sleep timer at any time during the countdown</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4836</td><td>O</td><td class="num">2021-01</td><td class="num">7</td><td>Toggle tablet mode on resize</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">4977</td><td>CO</td><td class="num">2021-03</td><td class="num">22</td><td>Separate button for continuous play</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">5237</td><td>C</td><td class="num">2021-06</td><td class="num">34</td><td>'Refactor' episode statuses &amp; introduce 'Ignored' status</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">5608</td><td>C</td><td class="num">2021-12</td><td class="num">14</td><td>Allow to download/subscribe to specific media type based on enclosure URLs</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">5770</td><td>C</td><td class="num">2022-03</td><td class="num">20</td><td>Add option for hardware buttons to skip chapters</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">5924</td><td>C</td><td class="num">2022-06</td><td class="num">14</td><td>Ability to mark chapters for skipping</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e1">E1</a> <span class="muted">(shares the segment model)</span></td></tr>
+    <tr><td class="num">6036</td><td>C</td><td class="num">2022-08</td><td class="num">19</td><td>Synchronization should sync "queue"</td><td><span class="verdict core">Core</span></td><td>— <span class="muted">(benefits from <a href="#e6">E6</a>)</span></td></tr>
+    <tr><td class="num">6064</td><td>C</td><td class="num">2022-09</td><td class="num">15</td><td>Include the tags in exported and imported OPML</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6158</td><td>C</td><td class="num">2022-10</td><td class="num">19</td><td>Automatic download and inbox functionality conflict</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6197</td><td>C</td><td class="num">2022-11</td><td class="num">14</td><td>Android Automotive support</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6299</td><td>C</td><td class="num">2023-01</td><td class="num">16</td><td>Display 'Latest episode' date in search results</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e4">E4</a></td></tr>
+    <tr><td class="num">6318</td><td>C</td><td class="num">2023-02</td><td class="num">13</td><td>Make chapter image enlargable/zoomable</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6609</td><td>C</td><td class="num">2023-09</td><td class="num">15</td><td>Notify user when a feed has failed to update multiple times</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6663</td><td>C</td><td class="num">2023-09</td><td class="num">18</td><td>Improve design of list item (episode)</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6671</td><td>C</td><td class="num">2023-10</td><td class="num">36</td><td>Make episodes not in inbox eligible for auto-download</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6716</td><td>C</td><td class="num">2023-10</td><td class="num">17</td><td>Sort by download date on Downloads screen</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">6723</td><td>C</td><td class="num">2023-10</td><td class="num">22</td><td>Easily share episode links to other AntennaPod users</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">7062</td><td>C</td><td class="num">2024-04</td><td class="num">23</td><td>Redesign the player icons to eliminate sharp edges</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">7329</td><td>C</td><td class="num">2024-08</td><td class="num">15</td><td>UX: orphaned playback view</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">7486</td><td>C</td><td class="num">2024-11</td><td class="num">15</td><td>Option to search episodes (of not-subscribed podcasts)</td><td><span class="verdict hybrid">Hybrid</span></td><td><a href="#e4">E4</a></td></tr>
+    <tr><td class="num">8017</td><td>C</td><td class="num">2025-09</td><td class="num">20</td><td>Add "download now" button for enqueued but not downloaded episodes</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">8078</td><td>C</td><td class="num">2025-11</td><td class="num">17</td><td>Option to add "beep" after rewinding or fast-forwarding</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+    <tr><td class="num">8191</td><td>C</td><td class="num">2025-12</td><td class="num">13</td><td>Introduce parental controls to limit children's listening time</td><td><span class="verdict core">Core</span></td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="gap">4. What PR&nbsp;#14 covers, and where it stops</h2>
+<p>
+  PR&nbsp;#14 establishes one trigger, one direction of data flow, and two capabilities:
+</p>
+<pre><code>trigger      MediaDownloadedHandler        // exactly one: after a successful download
+transport    IMediaProcessorPlugin.process(PluginMediaRequest) -> PluginMediaResult
+input        read-only ParcelFileDescriptor + title, mimeType, durationMs
+output       transcript String | List&lt;PluginChapter&gt;
+capabilities CAPABILITY_TRANSCRIPTION = 1, CAPABILITY_CHAPTERS = 1 &lt;&lt; 1</code></pre>
+<p>That shape has four consequences, and every proposal below is a response to one of them:</p>
+<div class="grid2">
+  <div class="card">
+    <h4>Downloaded episodes only</h4>
+    <p>
+      A plugin is never consulted for a streamed episode, and never again after the first download.
+      Anything that should also work while streaming, or should refresh when the publisher edits the
+      feed (<a href="https://github.com/AntennaPod/AntennaPod/issues/4212">#4212</a>), needs a second
+      trigger → <a href="#e3">E3</a>.
+    </p>
+  </div>
+  <div class="card">
+    <h4>Two result types</h4>
+    <p>
+      <code>resultType</code> is <code>TRANSCRIPT</code> or <code>CHAPTERS</code>. Time-coded segments,
+      loudness measurements, and search results have no representation → <a href="#e1">E1</a>,
+      <a href="#e2">E2</a>, <a href="#e4">E4</a>.
+    </p>
+  </div>
+  <div class="card">
+    <h4>Download pipeline only</h4>
+    <p>
+      The single in-process seam is <code>MediaProcessorRegistry</code>, reached from the downloader.
+      Playback, discovery, and sync each have their own seams
+      (<code>PlaybackServiceMediaPlayer</code>, <code>PodcastSearcherRegistry</code>,
+      <code>SynchronizationProvider</code>) that no plugin can reach → <a href="#e4">E4</a>,
+      <a href="#e5">E5</a>, <a href="#e6">E6</a>, <a href="#e8">E8</a>.
+    </p>
+  </div>
+  <div class="card">
+    <h4>One synchronous call, no UI</h4>
+    <p>
+      <code>process()</code> blocks a download worker thread, and a plugin cannot contribute anything a
+      user can see or tap beyond an on/off switch. Speech-to-text, loudness scans, and QR capture all
+      need more than that → <a href="#e0">E0</a>, <a href="#e4">E4</a>, <a href="#e7">E7</a>.
+    </p>
+  </div>
+</div>
+
+<h2 id="entrypoints">5. Proposed entry points</h2>
+<p class="muted">
+  Sketches are illustrative, not final API. Names follow the existing
+  <code>de.danoeh.antennapod.plugin.host</code> conventions.
+</p>
+
+<div class="card ep" id="e0">
+  <h3>E0 — Contract hardening <span class="tag">prerequisite</span></h3>
+  <p class="meta">Unblocks: everything below · Motivating issues: none directly</p>
+  <p>
+    Five gaps in the current contract get worse with every capability added, and are far cheaper to fix
+    before there is an ecosystem than after:
+  </p>
+  <ul>
+    <li>
+      <strong>Asynchronous results.</strong> <code>process()</code> is a blocking binder call on a download
+      worker with a bind timeout. Speech-to-text (<a href="#p5">P5</a>) and a loudness scan
+      (<a href="#p3">P3</a>) run for minutes. Add
+      <code>process(in PluginMediaRequest request, in IPluginResultCallback callback)</code> as a
+      <code>oneway</code> call, and have the host run plugin work in its own <code>WorkManager</code> job
+      with progress and cancellation.
+    </li>
+    <li>
+      <strong>Payloads over the binder limit.</strong> <code>PluginMediaResult.content</code> is a
+      <code>String</code>. A long transcript with speaker labels can approach the ~1&nbsp;MB binder
+      transaction ceiling, where it fails as a <code>TransactionTooLargeException</code> rather than
+      degrading. Results should be returned the same way inputs already are — as a
+      <code>ParcelFileDescriptor</code> — with the inline string kept only for small payloads.
+    </li>
+    <li>
+      <strong>Contract versioning.</strong> Add <code>getContractVersion()</code> and a
+      <code>META_DATA_CONTRACT_VERSION</code>, and have <code>PluginManager</code> refuse to register a
+      plugin built against an incompatible major. Today an old plugin meeting a new host fails at an
+      arbitrary point instead of at discovery.
+    </li>
+    <li>
+      <strong>Provenance.</strong> Plugin output is deliberately indistinguishable from publisher content —
+      good for pipeline reuse, bad for trust and cleanup. Record the producing plugin id alongside
+      generated transcripts/chapters so the UI can say "chapters generated by X" and so uninstalling a
+      plugin can offer to drop what it produced.
+    </li>
+    <li>
+      <strong>Declared side effects.</strong> A capability says what a plugin produces, not what it costs.
+      Add <code>META_DATA_USES_NETWORK</code> / <code>META_DATA_USES_REMOTE_SERVICE</code> so
+      <em>Settings&nbsp;→&nbsp;Plugins</em> can warn before the user enables something that will talk to a
+      server about their listening — the exact concern that has kept
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/4159">#4159</a> unresolved.
+    </li>
+  </ul>
+</div>
+
+<div class="card ep" id="e1">
+  <h3>E1 — Segment provider <span class="tag">highest value</span></h3>
+  <p class="meta">Motivating issues: <a href="https://github.com/AntennaPod/AntennaPod/issues/4159">#4159</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/5924">#5924</a> · Delivered by <a href="#p1">P1</a></p>
+  <p>
+    A plugin returns time ranges within an episode, each with a category and a suggested action. Core owns
+    what happens to them.
+  </p>
+<pre><code>parcelable PluginSegment {
+    long startMs; long endMs;
+    int category;      // SPONSOR | SELF_PROMO | INTRO | OUTRO | MUSIC | OTHER
+    int action;        // SKIP | MUTE | MARK_ONLY
+    float confidence;  // 0..1
+    String label;
+}
+// PluginContract
+CAPABILITY_SEGMENTS  = 1 &lt;&lt; 2;
+RESULT_TYPE_SEGMENTS = 3;</code></pre>
+  <p><strong>Core-side work.</strong> Persist segments per <code>FeedMedia</code>; have
+  <code>:playback:service</code> consult them on position updates (the same place chapter transitions are
+  already noticed) and skip or mute; show them on the player screen so a skip is visible and undoable.
+  That UI is also where <a href="https://github.com/AntennaPod/AntennaPod/issues/5924">#5924</a> lands —
+  user-marked segments and plugin-supplied segments are the same record with a different source.</p>
+  <p><strong>Two-way, opt-in.</strong> Community databases need contributions. Add
+  <code>submitSegments(in PluginSegmentSubmission s)</code> as a separate <code>oneway</code> method behind
+  its own consent toggle, so "use the database" and "send data to the database" are distinct decisions.</p>
+  <p class="muted">Depends on <a href="#e3">E3</a> for streamed episodes and for lookups that need no audio.</p>
+</div>
+
+<div class="card ep" id="e2">
+  <h3>E2 — Offline audio analysis → playback profile</h3>
+  <p class="meta">Motivating issue: <a href="https://github.com/AntennaPod/AntennaPod/issues/2187">#2187</a> · Delivered by <a href="#p3">P3</a></p>
+  <p>
+    Loudness normalization splits cleanly: <strong>measuring</strong> is expensive, opinionated, and
+    perfectly suited to a plugin; <strong>applying</strong> is a few lines in the existing ExoPlayer
+    pipeline. A plugin scans the downloaded file once and returns a profile; core applies it as a gain on
+    playback.
+  </p>
+<pre><code>parcelable PluginLoudnessProfile {
+    float integratedLufs;     // EBU R128
+    float truePeakDb;
+    float suggestedGainDb;    // what core applies
+    float loudnessRangeLu;    // optional, for dynamics decisions
+}
+CAPABILITY_LOUDNESS_ANALYSIS = 1 &lt;&lt; 3;</code></pre>
+  <div class="callout warn">
+    <strong>Explicit non-goal: real-time DSP over the binder.</strong> Streaming PCM frames to another
+    process and back cannot meet audio latency requirements and would burn battery for the entire duration
+    of playback. Anything that must touch the sample stream continuously — a true compressor/limiter,
+    smoother skip-silence (<a href="https://github.com/AntennaPod/AntennaPod/issues/4229">#4229</a>), a
+    rewind beep (<a href="https://github.com/AntennaPod/AntennaPod/issues/8078">#8078</a>) — stays an
+    in-process ExoPlayer <code>AudioProcessor</code> in core. The plugin boundary is the right place for
+    <em>analysis</em>, not for the audio path.
+  </div>
+</div>
+
+<div class="card ep" id="e3">
+  <h3>E3 — Metadata-time trigger</h3>
+  <p class="meta">Motivating issues: <a href="https://github.com/AntennaPod/AntennaPod/issues/4212">#4212</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/1946">#1946</a>; prerequisite for <a href="#e1">E1</a> · Delivered by <a href="#p1">P1</a>, <a href="#p4">P4</a></p>
+  <p>
+    A second host trigger, fired after a feed refresh and before playback, that passes
+    <strong>metadata only</strong> — no file descriptor:
+  </p>
+<pre><code>parcelable PluginItemRequest {
+    String guid; String enclosureUrl; String feedUrl;
+    String title; long durationMs; long pubDate;
+    boolean hasChapters; boolean hasTranscript;
+    Map extras;   // Podcasting 2.0 tags core parsed but does not consume
+}</code></pre>
+  <p>This is what makes plugins useful to the (many) users who stream rather than download, and it is
+  strictly cheaper than the download trigger: a database lookup keyed by GUID or enclosure URL needs no
+  audio at all. It also gives a natural place to refresh generated content when the publisher edits an
+  episode, which is the whole of
+  <a href="https://github.com/AntennaPod/AntennaPod/issues/4212">#4212</a>.</p>
+  <p class="muted">
+    Guard rails: the trigger must be batched and rate-limited per refresh, must respect the metered-network
+    setting, and must never delay the refresh itself — plugin work happens after items are committed.
+  </p>
+</div>
+
+<div class="card ep" id="e4">
+  <h3>E4 — Discovery: search providers and add-podcast sources</h3>
+  <p class="meta">Motivating issues: <a href="https://github.com/AntennaPod/AntennaPod/issues/3545">#3545</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/4747">#4747</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/7486">#7486</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/6299">#6299</a> · Delivered by <a href="#p7">P7</a>, <a href="#p8">P8</a></p>
+  <p>
+    <code>:net:discovery</code> already has the right shape in process:
+    <code>PodcastSearcherRegistry</code> holds a list of <code>PodcastSearcher</code> implementations
+    (iTunes, Fyyd, Podcast Index) that <code>CombinedSearcher</code> fans out to. E4 mirrors that registry
+    across the binder, which is the same trick PR&nbsp;#14 played with
+    <code>MediaProcessorRegistry</code>.
+  </p>
+<pre><code>interface IPodcastSearchPlugin {
+    String getDisplayName();
+    List&lt;PluginSearchResult&gt; search(String query, int limit);
+    List&lt;PluginSearchResult&gt; searchEpisodes(String query, int limit);   // #7486
+}
+CAPABILITY_PODCAST_SEARCH = 1 &lt;&lt; 4;
+CAPABILITY_EPISODE_SEARCH = 1 &lt;&lt; 5;
+CAPABILITY_FEED_SOURCE    = 1 &lt;&lt; 6;   // contributes an "add podcast" action</code></pre>
+  <p>
+    <code>CAPABILITY_FEED_SOURCE</code> is the smaller and more interesting half: a plugin contributes a
+    labelled entry to the add-podcast screen that launches its own activity and returns a feed URL. That is
+    exactly <a href="https://github.com/AntennaPod/AntennaPod/issues/3545">#3545</a> (QR scanning) — a
+    feature whose real cost to core is a camera permission and a barcode dependency in the APK, both of
+    which move to the plugin. NFC, clipboard watchers, and directory imports arrive for free.
+  </p>
+  <p><strong>New requirement:</strong> a small UI contribution API (label, icon, activity intent) that
+  <code>:ui:discovery</code> renders. Keep it declarative — plugins supply data and an intent, never views.</p>
+</div>
+
+<div class="card ep" id="e5">
+  <h3>E5 — Playback route / remote renderer <span class="tag">hard</span></h3>
+  <p class="meta">Motivating issue: <a href="https://github.com/AntennaPod/AntennaPod/issues/2920">#2920</a> · Delivered by <a href="#p6">P6</a></p>
+  <p>
+    A plugin advertises playback devices and takes over transport; core keeps queue, position, and progress
+    state. The in-process seam already exists and is proven: <code>:playback:cast</code> supplies a
+    Chromecast <code>PlaybackServiceMediaPlayer</code> for the Play flavour, so a
+    <code>RemotePlaybackServiceMediaPlayer</code> backed by a plugin is the same substitution with a binder
+    in the middle.
+  </p>
+<pre><code>interface IPlaybackRoutePlugin {
+    List&lt;PluginRoute&gt; getRoutes();
+    boolean selectRoute(String routeId);
+    void load(String mediaUrl, long positionMs, float speed);
+    void play(); void pause(); void seekTo(long positionMs); void setVolume(float v);
+    void setListener(in IPlaybackRouteListener listener);   // position + state callbacks
+}
+CAPABILITY_PLAYBACK_ROUTE = 1 &lt;&lt; 7;</code></pre>
+  <p>
+    Ranked last on effort, first on structural payoff: it is the only proposal here that could eventually
+    let Chromecast leave the Play-only flavour, replacing a build-flavour fork with an optional install.
+    Sonos, UPnP/DLNA, and Snapcast then stop being upstream feature requests at all.
+  </p>
+  <p class="muted">
+    Caveats: remote devices need a reachable URL, so local files require the plugin to serve them; position
+    reporting must be throttled hard; and a route disappearing mid-episode must fall back to local playback
+    without losing position.
+  </p>
+</div>
+
+<div class="card ep" id="e6">
+  <h3>E6 — Sync and backup providers</h3>
+  <p class="meta">Motivating issues: <a href="https://github.com/AntennaPod/AntennaPod/issues/1899">#1899</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/4089">#4089</a>; helps <a href="https://github.com/AntennaPod/AntennaPod/issues/6036">#6036</a> · Delivered by <a href="#p9">P9</a></p>
+  <p>
+    <code>:net:sync:service-interface</code> already isolates <code>SynchronizationProvider</code> from its
+    implementations — the module split AntennaPod uses for exactly this purpose. Exposing it over the binder
+    lets alternative back-ends (WebDAV, a Drive folder, a Syncthing directory, a self-hosted endpoint) ship
+    as plugin apps instead of as flavour-specific code or upstream feature requests.
+  </p>
+<pre><code>interface ISyncProviderPlugin {
+    String getDisplayName();
+    PluginSubscriptionChanges getSubscriptionChanges(long lastSync);
+    PluginUploadResponse uploadSubscriptionChanges(in List&lt;String&gt; added, in List&lt;String&gt; removed);
+    PluginEpisodeActionChanges getEpisodeActionChanges(long lastSync);
+    void uploadEpisodeActions(in List&lt;PluginEpisodeAction&gt; actions);
+}
+CAPABILITY_SYNC_PROVIDER = 1 &lt;&lt; 8;
+CAPABILITY_BACKUP        = 1 &lt;&lt; 9;   // exchanges an opaque blob from :storage:importexport</code></pre>
+  <p>
+    <code>CAPABILITY_BACKUP</code> is the cheaper half: core hands over the archive
+    <code>DatabaseExporter</code> in <code>:storage:importexport</code> already produces, and the plugin
+    decides where it goes. Note what is <em>already</em> in core — <code>OpmlBackupAgent</code> is
+    registered as the app's <code>android:backupAgent</code>, so subscriptions do ride Android's Auto Backup
+    today. What <a href="https://github.com/AntennaPod/AntennaPod/issues/1899">#1899</a> and
+    <a href="https://github.com/AntennaPod/AntennaPod/issues/4089">#4089</a> still want is
+    <em>settings</em> in the payload and destinations that are not Google's — the first is a core decision,
+    the second is exactly what a plugin is for.
+  </p>
+  <p>
+    The same split governs sync: <em>where</em> data goes is plugin territory; <em>what</em> is in the
+    payload (<a href="https://github.com/AntennaPod/AntennaPod/issues/6036">#6036</a> wants queue order)
+    stays a core data-model decision.
+  </p>
+</div>
+
+<div class="card ep" id="e7">
+  <h3>E7 — Episode and feed actions</h3>
+  <p class="meta">Motivating issue: <a href="https://github.com/AntennaPod/AntennaPod/issues/4671">#4671</a> · Delivered by <a href="#p2">P2</a></p>
+  <p>
+    A plugin contributes a labelled action to the episode context menu, player screen, or feed screen, and
+    receives the item's metadata — including Podcasting 2.0 tags that <code>:parser:feed</code> parses but
+    core does not consume.
+  </p>
+<pre><code>interface IEpisodeActionPlugin {
+    List&lt;PluginAction&gt; getActions(in PluginItemRequest item);  // id, label, icon, enabled
+    void invoke(String actionId, in PluginItemRequest item);    // may start its own activity
+}
+CAPABILITY_EPISODE_ACTION = 1 &lt;&lt; 10;</code></pre>
+  <p>
+    For <a href="https://github.com/AntennaPod/AntennaPod/issues/4671">#4671</a> this is what turns "become a
+    Lightning wallet" into "core forwards a tag it already parsed". Core's entire share of the work is:
+    retain <code>podcast:value</code> in <code>extras</code>, and render a "Boost" action supplied by a
+    plugin. No wallet, no keys, no funds, no crypto dependency in the APK, and no exposure for users who
+    never install it.
+  </p>
+  <p class="muted">
+    Prerequisite: <code>PodcastIndex.java</code> in <code>:parser:feed</code> handles
+    <code>funding</code>, <code>chapters</code>, <code>socialInteract</code>, and <code>transcript</code>,
+    and silently drops every other element in the namespace — <code>value</code> included. It needs to
+    retain unhandled Podcasting 2.0 tags in a generic extras map instead.
+  </p>
+</div>
+
+<div class="card ep" id="e8">
+  <h3>E8 — Playback observer <span class="tag">privacy-sensitive</span></h3>
+  <p class="meta">Motivating issue: <a href="https://github.com/AntennaPod/AntennaPod/issues/4671">#4671</a> (streaming payments) · Delivered by <a href="#p2">P2</a></p>
+  <p>
+    Coarse, throttled, one-way playback events for plugins that must react to listening rather than to
+    downloads:
+  </p>
+<pre><code>oneway interface IPlaybackObserverPlugin {
+    void onPlaybackEvent(in PluginPlaybackEvent event);   // STARTED | PAUSED | TICK | COMPLETED
+}
+CAPABILITY_PLAYBACK_OBSERVER = 1 &lt;&lt; 11;   // tick interval &gt;= 60s, host-controlled</code></pre>
+  <div class="callout warn">
+    This is the single most invasive capability proposed here: a continuous record of what the user listens
+    to, delivered to another app. It must never be enabled by capability alone. Require a separate toggle
+    with an explicit warning, deliver events only while playback is in the foreground service, coarsen
+    positions, and never send them for episodes the user has marked private. If that bar is too high for a
+    given use case, that use case does not get this capability.
+  </div>
+</div>
+
+<h2 id="plugins">6. Proposed plugins</h2>
+<p class="muted">
+  Each plugin is its own repository and APK, as with the two that already exist
+  (<a href="https://github.com/tonytamsf/antennapod-transcription-plugin">transcription</a>,
+  <a href="https://github.com/tonytamsf/antennapod-chapter-plugin">chapters</a>). Order reflects the
+  sequencing in §8.
+</p>
+
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr><th>Plugin</th><th>What it does</th><th>Needs</th><th>Closes / unblocks</th></tr>
+  </thead>
+  <tbody>
+    <tr id="p1"><td><strong>P1 — Ad &amp; sponsor segment plugin</strong></td><td>Looks up crowd-sourced segment data by episode GUID/enclosure URL; optionally detects intros/outros on device. Returns skip/mute ranges. Contribution back is a second, separate opt-in.</td><td><a href="#e1">E1</a>, <a href="#e3">E3</a>, <a href="#e0">E0</a></td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/4159">#4159</a>; shares its model with <a href="https://github.com/AntennaPod/AntennaPod/issues/5924">#5924</a></td></tr>
+    <tr id="p4"><td><strong>P4 — Chapter source plugin</strong></td><td>Productionizes the existing chapter sample: fetches chapters from external sources on feed refresh and re-syncs when a publisher edits an episode.</td><td><a href="#e3">E3</a> (chapters capability exists)</td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/4212">#4212</a>, part of <a href="https://github.com/AntennaPod/AntennaPod/issues/1946">#1946</a></td></tr>
+    <tr id="p3"><td><strong>P3 — Loudness analysis plugin</strong></td><td>EBU R128 scan of the downloaded file; returns integrated loudness, true peak, and a suggested gain. No audio path involvement.</td><td><a href="#e2">E2</a>, <a href="#e0">E0</a></td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/2187">#2187</a></td></tr>
+    <tr id="p5"><td><strong>P5 — Speech-to-text plugin</strong></td><td>The existing transcription sample, hardened: on-device model, resumable, battery/charging aware. Already works against today's contract; E0 makes it well-behaved.</td><td>ships today; <a href="#e0">E0</a></td><td>foundation for per-episode transcript search</td></tr>
+    <tr id="p7"><td><strong>P7 — QR &amp; clipboard add-podcast plugin</strong></td><td>Scans a QR code or watches the clipboard for a feed URL and hands it to the add-podcast flow. Keeps the camera permission and barcode dependency out of core.</td><td><a href="#e4">E4</a> (<code>FEED_SOURCE</code>)</td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/3545">#3545</a></td></tr>
+    <tr id="p8"><td><strong>P8 — Extra search provider plugin</strong></td><td>Adds a search back-end to the discovery screen, including episode-level search and richer result metadata such as latest-episode date.</td><td><a href="#e4">E4</a></td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/7486">#7486</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/4747">#4747</a>, <a href="https://github.com/AntennaPod/AntennaPod/issues/6299">#6299</a></td></tr>
+    <tr id="p9"><td><strong>P9 — Backup destination plugin</strong></td><td>Takes the archive <code>:storage:importexport</code> produces and stores it on WebDAV / a cloud folder / a scheduled local rotation — i.e. the destinations Android's built-in Auto Backup does not cover.</td><td><a href="#e6">E6</a> (<code>BACKUP</code>)</td><td>the non-Google half of <a href="https://github.com/AntennaPod/AntennaPod/issues/1899">#1899</a> and <a href="https://github.com/AntennaPod/AntennaPod/issues/4089">#4089</a></td></tr>
+    <tr id="p2"><td><strong>P2 — Value4Value wallet plugin</strong></td><td>Holds the Lightning wallet, reads <code>podcast:value</code> from the item extras, offers a "Boost" action and optional streaming payments driven by playback ticks.</td><td><a href="#e7">E7</a>, <a href="#e8">E8</a></td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/4671">#4671</a></td></tr>
+    <tr id="p6"><td><strong>P6 — Sonos / UPnP route plugin</strong></td><td>Discovers Sonos and DLNA renderers, serves local files to them, and drives transport while core keeps queue and progress state.</td><td><a href="#e5">E5</a></td><td><a href="https://github.com/AntennaPod/AntennaPod/issues/2920">#2920</a></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="nongoals">7. What must stay in core</h2>
+<p>
+  The most valuable thing this document can do is say no. Four clusters account for most of the
+  <span class="verdict core">Core</span> verdicts above, and none of them should get an extension point:
+</p>
+<div class="grid2">
+  <div class="card">
+    <h4>Queue, inbox, and auto-download policy</h4>
+    <p class="muted">
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/1077">#1077</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/2648">#2648</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/2077">#2077</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/6671">#6671</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/6158">#6158</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/307">#307</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/2437">#2437</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/4345">#4345</a>
+    </p>
+    <p>
+      Tempting, because <code>AutomaticDownloadAlgorithm</code> and <code>EpisodeCleanupAlgorithm</code> are
+      already swappable strategies. Resist it. These issues are not blocked on implementation — they are
+      blocked on deciding what the app should do, and #1077's 133 comments are that argument, not a request
+      for an API. A plugin point would export the disagreement to third parties and leave every user with a
+      differently behaving queue.
+    </p>
+  </div>
+  <div class="card">
+    <h4>The audio path</h4>
+    <p class="muted">
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/4229">#4229</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/8078">#8078</a>, the real-time half of
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/2187">#2187</a>
+    </p>
+    <p>
+      Continuous sample processing across a process boundary cannot meet latency or battery budgets. Core
+      keeps the ExoPlayer <code>AudioProcessor</code> chain; plugins may only supply parameters for it
+      (<a href="#e2">E2</a>).
+    </p>
+  </div>
+  <div class="card">
+    <h4>UI, layout, and theming</h4>
+    <p class="muted">
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/7062">#7062</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/6663">#6663</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/6318">#6318</a>,
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/7329">#7329</a>
+    </p>
+    <p>
+      Plugin UI stays declarative: a label, an icon, an intent (<a href="#e4">E4</a>,
+      <a href="#e7">E7</a>). Remote views or injected layouts would make accessibility, theming, and
+      translation unownable.
+    </p>
+  </div>
+  <div class="card">
+    <h4>Anything that must not be bypassable</h4>
+    <p class="muted">
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/8191">#8191</a> (parental controls),
+      <a href="https://github.com/AntennaPod/AntennaPod/issues/5237">#5237</a> (episode statuses)
+    </p>
+    <p>
+      A restriction enforced by an app the user can uninstall is not a restriction. And episode status is
+      the vocabulary the rest of the app is written in; changing it is a core refactor by definition.
+    </p>
+  </div>
+</div>
+
+<h2 id="sequencing">8. Sequencing</h2>
+<ol class="phases">
+  <li>
+    <strong>Phase 0 — harden the contract (<a href="#e0">E0</a>).</strong> Async results, payloads over an
+    FD, contract versioning, provenance, declared side effects. Cheap now, expensive once plugins exist in
+    the wild. Nothing below should land before this.
+  </li>
+  <li>
+    <strong>Phase 1 — the flagship (<a href="#e3">E3</a> → <a href="#e1">E1</a> → <a href="#p1">P1</a>).</strong>
+    Metadata-time trigger first (it is small and independently useful), then segments, then the ad-skip
+    plugin. Delivers the single most-wanted feature the plugin system can legitimately claim,
+    and lands the shared segment model that
+    <a href="https://github.com/AntennaPod/AntennaPod/issues/5924">#5924</a> also needs.
+  </li>
+  <li>
+    <strong>Phase 2 — breadth on existing pipelines (<a href="#e2">E2</a>, <a href="#e4">E4</a>).</strong>
+    Loudness analysis and discovery providers. Both reuse machinery that already exists
+    (ExoPlayer volume, <code>PodcastSearcherRegistry</code>) and prove the model beyond post-download
+    processing. Ships <a href="#p3">P3</a>, <a href="#p7">P7</a>, <a href="#p8">P8</a>.
+  </li>
+  <li>
+    <strong>Phase 3 — data ownership (<a href="#e6">E6</a>, <a href="#e7">E7</a>, <a href="#e8">E8</a>).</strong>
+    Backup/sync providers, episode actions, and — only with the consent design in E8 settled — the playback
+    observer. Ships <a href="#p9">P9</a> and <a href="#p2">P2</a>.
+  </li>
+  <li>
+    <strong>Phase 4 — playback routes (<a href="#e5">E5</a>, <a href="#p6">P6</a>).</strong> Largest surface
+    and the only one that touches the player's core state machine. Worth doing last and worth doing:
+    it is the phase that turns a build flavour into an install choice.
+  </li>
+</ol>
+
+<div class="callout">
+  <strong>One rule across all phases.</strong> Core never gains a dependency because a plugin wants one, and
+  a user who installs no plugins must see no new permission, no new network traffic, and no new setting
+  beyond the existing <em>Settings&nbsp;→&nbsp;Plugins</em> screen. Every entry point above is designed so
+  that the default configuration of AntennaPod is byte-for-byte the app it is today.
+</div>
+
+<footer class="page">
+  Issue data sampled from the AntennaPod issue tracker on 2026-07-31 (open issues labelled
+  <code>Type: Feature request</code>; top 40 by comment count and 40 oldest). Comment counts and labels
+  change over time. Companion to <a href="architecture.html">Plugin System Architecture</a>.
+</footer>
+
+</div>
+</body>
+</html>
