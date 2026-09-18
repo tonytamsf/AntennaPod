@@ -878,6 +878,29 @@ public class DBWriter {
                         SynchronizationQueue.getInstance().enqueueEpisodePlayed(item.getMedia(), true);
                     }
                 }
+                // The feed's items were already inserted while it was just a preview (not yet subscribed),
+                // so the upcoming refresh will treat them all as known and never apply the new episodes
+                // action. Apply it here to the newest item instead, now that the feed is actually subscribed.
+                FeedItem newestItem = feed.getMostRecentItem();
+                if (newestItem != null && newestItem.hasMedia()) {
+                    FeedPreferences.NewEpisodesAction newEpisodesAction = feed.getPreferences().getNewEpisodesAction();
+                    if (newEpisodesAction == FeedPreferences.NewEpisodesAction.GLOBAL) {
+                        newEpisodesAction = UserPreferences.getNewEpisodesAction();
+                    }
+                    FeedPreferences.AutoDownloadSetting autoDownload = feed.getPreferences().getAutoDownload();
+                    if (!feed.isLocalFeed() && (autoDownload == FeedPreferences.AutoDownloadSetting.ENABLED
+                            || (autoDownload == FeedPreferences.AutoDownloadSetting.GLOBAL
+                                    && UserPreferences.isEnableAutodownloadGlobal()))) {
+                        newEpisodesAction = FeedPreferences.NewEpisodesAction.ADD_TO_INBOX;
+                    }
+                    if (newEpisodesAction == FeedPreferences.NewEpisodesAction.ADD_TO_INBOX) {
+                        newestItem.setNew();
+                        adapter.setSingleFeedItem(newestItem);
+                        EventBus.getDefault().post(new FeedItemEvent(Collections.singletonList(newestItem), true));
+                    } else if (newEpisodesAction == FeedPreferences.NewEpisodesAction.ADD_TO_QUEUE) {
+                        DBWriter.addQueueItem(context, newestItem);
+                    }
+                }
             }
             adapter.close();
             EventBus.getDefault().post(new FeedListUpdateEvent(feed));
